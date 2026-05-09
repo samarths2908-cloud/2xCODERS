@@ -21,7 +21,9 @@ export interface Station {
   operator: string;
   connectorType: string;
   distanceKm: number;
-  usageType?: string;
+  usageType: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface RankedStation extends Station {

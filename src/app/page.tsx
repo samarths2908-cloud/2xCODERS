@@ -4,11 +4,10 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
-import { RankedStation, User, Station } from "@/lib/types";
+import { RankedStation, Station, Location } from "@/lib/types";
 import RecommendationPanel from "@/components/RecommendationPanel";
 import { 
   Zap, 
-  Activity, 
   Map as MapIcon, 
   ListOrdered, 
   ShieldAlert, 
@@ -17,7 +16,8 @@ import {
   LayoutDashboard,
   Navigation,
   Loader2,
-  BatteryCharging
+  BatteryCharging,
+  LocateFixed
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -35,6 +35,12 @@ const MapView = dynamic(() => import("@/components/MapView"), {
   )
 });
 
+// Fixed User Location
+const FIXED_USER_LOCATION: Location = {
+  lat: 12.846032,
+  lng: 74.955173
+};
+
 type Tab = "dashboard" | "map" | "queue" | "admin";
 type Mode = "demo" | "real";
 type ChargeMode = "full" | "custom";
@@ -47,7 +53,7 @@ interface Particle {
 }
 
 export default function WattWiseApp() {
-  const [mode, setMode] = useState<Mode>("demo");
+  const [mode, setMode] = useState<Mode>("real");
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [rawStations, setRawStations] = useState<Station[]>(demoStations);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -56,6 +62,7 @@ export default function WattWiseApp() {
   const [targetPct, setTargetPct] = useState(80);
   const [tick, setTick] = useState(0);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [isLocating, setIsLocating] = useState(true);
 
   const scrollRefs = {
     dashboard: useRef<HTMLDivElement>(null),
@@ -64,8 +71,8 @@ export default function WattWiseApp() {
     admin: useRef<HTMLDivElement>(null),
   };
 
-  // Generate particles only on the client side to avoid hydration mismatch
   useEffect(() => {
+    // Generate particles
     const generated = Array.from({ length: 30 }).map(() => ({
       left: `${Math.random() * 100}%`,
       top: `${Math.random() * 100}%`,
@@ -73,6 +80,10 @@ export default function WattWiseApp() {
       opacity: Math.random() * 0.5
     }));
     setParticles(generated);
+
+    // Simulate location loading
+    const timer = setTimeout(() => setIsLocating(false), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -92,11 +103,18 @@ export default function WattWiseApp() {
 
   const rankedStations = useMemo(() => {
     const finalTarget = chargeMode === "full" ? 100 : targetPct;
-    return rankStations(rawStations, startPct, finalTarget);
+    return rankStations(rawStations, startPct, finalTarget, FIXED_USER_LOCATION);
   }, [rawStations, startPct, targetPct, chargeMode, tick]);
 
   const bestStation = rankedStations[0];
   const selectedStation = rankedStations.find(s => s.id === selectedId) || bestStation;
+
+  // Initialize selected station once best is found
+  useEffect(() => {
+    if (bestStation && !selectedId) {
+      setSelectedId(bestStation.id);
+    }
+  }, [bestStation, selectedId]);
 
   const scrollTo = (tab: Tab) => {
     setActiveTab(tab);
@@ -112,6 +130,14 @@ export default function WattWiseApp() {
 
   return (
     <main className="page-shell">
+      {/* Location Access Banner */}
+      {isLocating && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-cyan-500 text-black py-2 px-4 text-center font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Accessing your current location...
+        </div>
+      )}
+
       {/* Background Particles */}
       <div className="bg-particles">
         {particles.map((p, i) => (
@@ -186,7 +212,7 @@ export default function WattWiseApp() {
 
       {/* Content */}
       <div className="content">
-        <header ref={scrollRefs.dashboard} className="hero glass flex flex-col lg:flex-row justify-between items-start gap-8 p-10 rounded-[2.5rem]">
+        <header ref={scrollRefs.dashboard} className="hero glass flex flex-col lg:flex-row justify-between items-start gap-8 p-10 rounded-[2.5rem] mt-4">
           <div className="max-w-2xl">
             <p className="text-xs font-bold text-cyan-400 tracking-[0.4em] uppercase mb-3">System Optimized Navigation</p>
             <h2 className="text-6xl font-black font-headline tracking-tighter mb-6 leading-[0.9]">
@@ -195,7 +221,7 @@ export default function WattWiseApp() {
             </h2>
             <p className="text-white/60 text-lg leading-relaxed mb-8">
               Real-time synchronization with {mode === "demo" ? "simulated" : "live"} grid telemetry 
-              at Bangalore sectors. Ranked by minimal wait-time overhead.
+              at Bangalore & Mangalore sectors. Ranked by minimal wait-time overhead.
             </p>
             
             <div className="flex gap-4">
@@ -237,7 +263,7 @@ export default function WattWiseApp() {
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-xl font-bold font-headline">Tactical Sector Map</h3>
-                  <p className="text-xs text-white/40">Bangalore Metropolitan Area</p>
+                  <p className="text-xs text-white/40">Mangalore - {FIXED_USER_LOCATION.lat.toFixed(4)}, {FIXED_USER_LOCATION.lng.toFixed(4)}</p>
                 </div>
                 <div className="flex gap-2">
                   <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/5">
@@ -245,8 +271,8 @@ export default function WattWiseApp() {
                     <span className="text-[10px] font-bold">OPTIMAL</span>
                   </div>
                   <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/5">
-                    <div className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4]" />
-                    <span className="text-[10px] font-bold">SELECTED</span>
+                    <LocateFixed className="w-3 h-3 text-cyan-400" />
+                    <span className="text-[10px] font-bold">YOU</span>
                   </div>
                 </div>
               </div>
@@ -254,6 +280,7 @@ export default function WattWiseApp() {
                 stations={rankedStations}
                 bestStationId={bestStation?.id}
                 selectedStationId={selectedId}
+                userLocation={FIXED_USER_LOCATION}
                 onStationSelect={(id) => setSelectedId(id)}
               />
             </div>
@@ -278,12 +305,12 @@ export default function WattWiseApp() {
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-6">
                       <div className="bg-black/20 p-2 rounded-xl">
-                        <p className="text-[8px] text-white/30 font-bold uppercase">Wait Time</p>
-                        <p className="text-sm font-bold text-amber-400">{s.waitMinutes}m</p>
+                        <p className="text-[8px] text-white/30 font-bold uppercase">Dist</p>
+                        <p className="text-sm font-bold text-white">{s.distanceKm.toFixed(1)}km</p>
                       </div>
                       <div className="bg-black/20 p-2 rounded-xl">
-                        <p className="text-[8px] text-white/30 font-bold uppercase">Ports Avail</p>
-                        <p className="text-sm font-bold text-cyan-400">{s.availablePorts}/{s.totalPorts}</p>
+                        <p className="text-[8px] text-white/30 font-bold uppercase">Wait Time</p>
+                        <p className="text-sm font-bold text-amber-400">{s.waitMinutes}m</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-end">
