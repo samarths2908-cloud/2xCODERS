@@ -1,12 +1,17 @@
+
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { demoStations } from "@/lib/mock-data";
 import { rankStationsByFastestOption, RankedStation } from "@/lib/charging";
+import { MapView } from "@/components/MapView";
+import { RecommendationPanel } from "@/components/RecommendationPanel";
+import { fetchNearbyStations } from "@/lib/api";
 
-function statusClass(status: RankedStation["status"]) {
+function statusClass(status: string) {
   switch (status) {
     case "Free":
+    case "Online":
       return "status free";
     case "Busy":
       return "status busy";
@@ -20,20 +25,73 @@ function statusClass(status: RankedStation["status"]) {
 }
 
 export default function Page() {
+  // State
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [isRealMode, setIsRealMode] = useState(false);
+  const [stations, setStations] = useState(demoStations);
+  const [selectedStation, setSelectedStation] = useState<RankedStation | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   // Config
   const currentBattery = 34;
   const targetBattery = 80;
+  const userLocation = { latitude: 34.0522, longitude: -118.2437 }; // Mock user location (LA)
+
+  // Real Mode Data Fetching
+  useEffect(() => {
+    if (isRealMode) {
+      setIsLoading(true);
+      fetchNearbyStations(userLocation.latitude, userLocation.longitude)
+        .then((data) => {
+          // Map API data to our Station type
+          const mappedStations = data.map((item: any) => ({
+            id: item.ID.toString(),
+            name: item.AddressInfo.Title,
+            distanceKm: item.AddressInfo.Distance || 2.5,
+            queueLength: Math.floor(Math.random() * 3),
+            avgSessionMinutes: 20,
+            chargerKW: item.Connections?.[0]?.PowerKW || 120,
+            batteryCapacityKWh: 75,
+            availablePorts: Math.floor(Math.random() * 4),
+            status: Math.random() > 0.3 ? "Free" : "Busy",
+            location: {
+              latitude: item.AddressInfo.Latitude,
+              longitude: item.AddressInfo.Longitude
+            }
+          }));
+          setStations(mappedStations);
+        })
+        .finally(() => setIsLoading(false));
+    } else {
+      setStations(demoStations);
+    }
+  }, [isRealMode]);
 
   // Calculate ranked stations
   const rankedStations = useMemo(() => {
-    return rankStationsByFastestOption(demoStations, currentBattery, targetBattery);
-  }, [currentBattery, targetBattery]);
+    return rankStationsByFastestOption(stations, currentBattery, targetBattery);
+  }, [stations, currentBattery, targetBattery]);
 
   const bestStation = rankedStations[0];
 
+  // Sync selected station if not set or if best changes
+  useEffect(() => {
+    if (!selectedStation && bestStation) {
+      setSelectedStation(bestStation);
+    }
+  }, [bestStation, selectedStation]);
+
+  const handleReroute = () => {
+    if (bestStation) {
+      setSelectedStation(bestStation);
+      setActiveTab("map");
+      // Could add a toast notification here
+    }
+  };
+
   return (
     <main className="page-shell">
-      <div className="bg-particles" aria-hidden="true">
+      <div className="bg-particles" aria-hidden="true" style={{ pointerEvents: 'none' }}>
         <span />
         <span />
         <span />
@@ -46,9 +104,9 @@ export default function Page() {
         <span />
       </div>
 
-      <div className="bg-orb orb-1" aria-hidden="true" />
-      <div className="bg-orb orb-2" aria-hidden="true" />
-      <div className="bg-grid" aria-hidden="true" />
+      <div className="bg-orb orb-1" aria-hidden="true" style={{ pointerEvents: 'none' }} />
+      <div className="bg-orb orb-2" aria-hidden="true" style={{ pointerEvents: 'none' }} />
+      <div className="bg-grid" aria-hidden="true" style={{ pointerEvents: 'none' }} />
 
       <aside className="sidebar glass">
         <div>
@@ -60,18 +118,47 @@ export default function Page() {
         </div>
 
         <nav className="side-nav">
-          <button className="nav-btn active">Dashboard</button>
-          <button className="nav-btn">Map</button>
-          <button className="nav-btn">Queue</button>
-          <button className="nav-btn">Reroute</button>
-          <button className="nav-btn">Admin</button>
+          <button 
+            className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            Dashboard
+          </button>
+          <button 
+            className={`nav-btn ${activeTab === 'map' ? 'active' : ''}`}
+            onClick={() => setActiveTab('map')}
+          >
+            Map
+          </button>
+          <button 
+            className={`nav-btn ${activeTab === 'queue' ? 'active' : ''}`}
+            onClick={() => setActiveTab('queue')}
+          >
+            Queue
+          </button>
+          <button 
+            className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
+            onClick={() => setActiveTab('admin')}
+          >
+            Admin
+          </button>
         </nav>
 
         <div className="side-footer">
           <div className="tiny-label">Mode</div>
           <div className="mode-switch">
-            <span className="mode active">Demo</span>
-            <span className="mode">Real</span>
+            <button 
+              className={`mode ${!isRealMode ? 'active' : ''}`}
+              onClick={() => setIsRealMode(false)}
+            >
+              Demo
+            </button>
+            <button 
+              className={`mode ${isRealMode ? 'active' : ''}`}
+              onClick={() => setIsRealMode(true)}
+            >
+              Real
+            </button>
           </div>
         </div>
       </aside>
@@ -80,7 +167,7 @@ export default function Page() {
         <header className="hero glass">
           <div>
             <p className="eyebrow">EV CHARGING INTELLIGENCE SYSTEM</p>
-            <h2>Fastest station. Lowest wait. Smart reroute.</h2>
+            <h2>{isLoading ? "Fetching Live Data..." : "Fastest station. Lowest wait."}</h2>
             <p className="hero-sub">
               Compare travel time, queue time, and charging time in real time to guide every vehicle to the best available charger.
             </p>
@@ -106,31 +193,27 @@ export default function Page() {
         </header>
 
         <section className="grid-layout">
-          <div className="panel glass map-panel">
+          <div className={`panel glass map-panel ${activeTab === 'map' ? 'ring-2 ring-primary/50' : ''}`}>
             <div className="panel-head">
               <div>
                 <p className="tiny-label">LIVE MAP</p>
                 <h3>Station availability and reroute view</h3>
               </div>
-              <button className="glow-btn">Instant Switch</button>
+              <button 
+                className="glow-btn"
+                onClick={() => setSelectedStation(bestStation)}
+              >
+                Focus Optimal
+              </button>
             </div>
 
-            <div className="map-fake">
-              <div className="map-pin pin-1">A</div>
-              <div className="map-pin pin-2">B</div>
-              <div className="map-pin pin-3">C</div>
-              <div className="map-route" />
-              <div className="map-route route-2" />
-              <div className="map-overlay">
-                <div>
-                  <span className="tiny-label">Recommended</span>
-                  <strong>{bestStation?.name}</strong>
-                </div>
-                <div>
-                  <span className="tiny-label">ETA Total</span>
-                  <strong>{bestStation?.totalEffectiveTime} min</strong>
-                </div>
-              </div>
+            <div className="map-fake" style={{ minHeight: '430px', position: 'relative' }}>
+               <MapView 
+                  stations={rankedStations} 
+                  selectedStation={selectedStation} 
+                  onStationClick={(st) => setSelectedStation(st as RankedStation)}
+                  userLocation={userLocation}
+               />
             </div>
           </div>
 
@@ -147,7 +230,7 @@ export default function Page() {
                 <div className="recommend-top">
                   <div>
                     <p className="tiny-label">Best match</p>
-                    <h4>{bestStation.name} · Port 02</h4>
+                    <h4>{bestStation.name}</h4>
                   </div>
                   <span className={statusClass(bestStation.status)}>
                     {bestStation.status === 'Free' ? 'Free Now' : bestStation.status}
@@ -173,15 +256,20 @@ export default function Page() {
                   </div>
                 </div>
 
-                <button className="glow-btn full">Reroute to this station</button>
+                <button 
+                  className="glow-btn full"
+                  onClick={handleReroute}
+                >
+                  Reroute to this station
+                </button>
               </div>
             )}
 
             <div className="terminal">
               <div className="terminal-title">SYSTEM LOG</div>
               <div className="log-line"><span>[OK]</span> Ranking engine initialized</div>
+              <div className="log-line"><span>[MODE]</span> Switched to {isRealMode ? 'Real-Time' : 'Demo'} mode</div>
               <div className="log-line"><span>[AI]</span> {bestStation?.name} identified as optimal</div>
-              <div className="log-line"><span>[ROUTE]</span> Travel time: {bestStation?.travelTime}m</div>
               <div className="log-line"><span>[LIVE]</span> Queues refreshed in real time</div>
             </div>
           </div>
@@ -196,14 +284,18 @@ export default function Page() {
 
             <div className="station-list">
               {rankedStations.map((station) => (
-                <article key={station.id} className="station-card">
+                <article 
+                  key={station.id} 
+                  className={`station-card cursor-pointer ${selectedStation?.id === station.id ? 'ring-1 ring-primary/50 border-primary/30' : ''}`}
+                  onClick={() => setSelectedStation(station)}
+                >
                   <div className="station-top">
                     <h4>{station.name}</h4>
                     <span className={statusClass(station.status)}>{station.status}</span>
                   </div>
 
                   <div className="station-meta">
-                    <span>{station.distanceKm} km</span>
+                    <span>{station.distanceKm.toFixed(1)} km</span>
                     <span>Wait {station.waitTime} min</span>
                     <span>Charge {station.chargeTime} min</span>
                   </div>
@@ -226,9 +318,16 @@ export default function Page() {
             </div>
 
             <div className="control-box">
-              <label>
+              <label className="text-sm flex flex-col gap-2">
                 Current battery
-                <input type="range" min="0" max="100" value={currentBattery} readOnly />
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={currentBattery} 
+                  readOnly 
+                  className="cursor-not-allowed opacity-50"
+                />
               </label>
 
               <div className="control-row">
@@ -244,9 +343,9 @@ export default function Page() {
 
               <div className="progress-wrap">
                 <div className="progress-bar">
-                  <div className="progress-fill" />
+                  <div className="progress-fill" style={{ width: `${currentBattery}%` }} />
                 </div>
-                <span className="tiny-label">Predicting charging duration</span>
+                <span className="tiny-label mt-2 block">Estimated session: {bestStation?.chargeTime || 0}m</span>
               </div>
 
               <button className="glow-btn full">Start Booking</button>
