@@ -1,9 +1,11 @@
+
 import type { Station } from "./charging";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const OPEN_CHARGE_MAP_API_KEY = process.env.NEXT_PUBLIC_OPEN_CHARGE_MAP_API_KEY || "";
 
 type OpenChargePoi = {
+  id?: number;
   AddressInfo?: {
     Title?: string;
     Distance?: number;
@@ -41,7 +43,7 @@ function toStation(item: OpenChargePoi, index: number): Station {
   }
 
   return {
-    id: `real-${index}`,
+    id: `real-${index}-${item.id || Math.random()}`,
     name: item.AddressInfo?.Title ?? `Charging Station ${index + 1}`,
     distanceKm,
     queueLength: index % 3,
@@ -49,13 +51,18 @@ function toStation(item: OpenChargePoi, index: number): Station {
     chargerKW: powerKW,
     batteryCapacityKWh: 75,
     availablePorts: Math.max(1, item.NumberOfPoints ?? 1),
+    totalPorts: Math.max(4, (item.NumberOfPoints ?? 0) + 2),
     status: internalStatus,
+    location: {
+      lat: item.AddressInfo?.Latitude ?? 12.9716,
+      lng: item.AddressInfo?.Longitude ?? 77.5946,
+    },
   };
 }
 
 export async function fetchNearbyStations(latitude: number, longitude: number): Promise<OpenChargePoi[]> {
   if (!OPEN_CHARGE_MAP_API_KEY) {
-    console.warn("OpenChargeMap API key is missing. Using fallback.");
+    console.warn("OpenChargeMap API key is missing.");
     return [];
   }
 
@@ -78,19 +85,13 @@ export async function loadRealStations(latitude: number, longitude: number): Pro
 }
 
 export async function fetchRouteETA(origin: string, destination: string): Promise<any> {
-  if (!GOOGLE_MAPS_API_KEY) {
-    console.warn("Google Maps API key is missing.");
-    return null;
-  }
-
+  if (!GOOGLE_MAPS_API_KEY) return null;
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destination}&key=${GOOGLE_MAPS_API_KEY}`;
-  
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error("Error fetching route ETA:", error);
     return null;
   }
 }

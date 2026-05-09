@@ -1,3 +1,4 @@
+
 import type { Station } from "./charging";
 
 export const demoStations: Station[] = [
@@ -12,6 +13,7 @@ export const demoStations: Station[] = [
     availablePorts: 2,
     totalPorts: 4,
     status: "Free",
+    location: { lat: 12.9786, lng: 77.5906 },
   },
   {
     id: "station-nova",
@@ -24,6 +26,7 @@ export const demoStations: Station[] = [
     availablePorts: 0,
     totalPorts: 6,
     status: "Busy",
+    location: { lat: 12.9616, lng: 77.6046 },
   },
   {
     id: "station-volt",
@@ -36,6 +39,7 @@ export const demoStations: Station[] = [
     availablePorts: 1,
     totalPorts: 3,
     status: "Charging",
+    location: { lat: 12.9756, lng: 77.5846 },
   },
   {
     id: "station-pulse",
@@ -48,6 +52,7 @@ export const demoStations: Station[] = [
     availablePorts: 3,
     totalPorts: 5,
     status: "Free",
+    location: { lat: 12.9916, lng: 77.5996 },
   },
 ];
 

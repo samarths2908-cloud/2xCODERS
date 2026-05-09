@@ -1,3 +1,4 @@
+
 export type StationStatus = "Free" | "Busy" | "Charging" | "Delayed" | "Online";
 
 export interface Station {
@@ -11,6 +12,7 @@ export interface Station {
   availablePorts: number;
   totalPorts: number;
   status: StationStatus;
+  location: { lat: number; lng: number };
 }
 
 export interface StationRanking extends Station {
