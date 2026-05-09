@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo } from "react";
 import { GoogleMap, useJsApiLoader, MarkerF, PolylineF } from "@react-google-maps/api";
 import type { RankedStation } from "@/lib/charging";
 import { Info, Loader2, MapPin } from "lucide-react";
@@ -15,10 +14,10 @@ type Props = {
 
 const mapContainerStyle = {
   width: "100%",
-  height: "100%",
+  height: "430px",
 };
 
-// Cyberpunk Dark Map Theme
+// Cyberpunk Dark Map Theme for Google Maps
 const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#0b0f14" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#0b0f14" }] },
@@ -59,16 +58,17 @@ export default function MapView({
 
   const routePath = useMemo(() => {
     if (!bestStation) return [];
+    // Drawing a simple straight neural-link for the route
     return [center, bestStation.location];
   }, [center, bestStation]);
 
   if (loadError) {
     return (
-      <div className="flex flex-col items-center justify-center h-[500px] rounded-[2rem] border border-red-500/20 text-center p-8 glass bg-black/40">
+      <div className="flex flex-col items-center justify-center h-[430px] rounded-[2rem] border border-red-500/20 text-center p-8 glass bg-black/40">
         <Info className="w-12 h-12 text-red-500 mb-4 opacity-50" />
         <h3 className="text-xl font-bold text-white mb-2">Uplink Failed</h3>
         <p className="text-sm text-white/40 max-w-xs">
-          Google Maps API key is invalid or missing from environment.
+          Google Maps API key is invalid or missing from environment variables.
         </p>
       </div>
     );
@@ -76,7 +76,7 @@ export default function MapView({
 
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center h-[500px] rounded-[2rem] border border-white/5 glass bg-black/40">
+      <div className="flex items-center justify-center h-[430px] rounded-[2rem] border border-white/5 glass bg-black/40">
         <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
       </div>
     );
@@ -84,7 +84,7 @@ export default function MapView({
 
   return (
     <div
-      className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#020408] min-h-[500px] w-full"
+      className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#020408] w-full"
       style={{
         boxShadow: "inset 0 0 60px rgba(0,255,255,0.03), 0 20px 50px rgba(0,0,0,0.5)",
       }}
@@ -124,7 +124,7 @@ export default function MapView({
 
           let color = "#49d9ff"; // Default cyan
           if (isBest) color = "#34f5a3"; // Best green
-          else if (isSelected) color = "#bc7dff"; // Selected purple/cyan alt
+          else if (isSelected) color = "#bc7dff"; // Selected purple
 
           return (
             <MarkerF
@@ -145,7 +145,7 @@ export default function MapView({
         })}
       </GoogleMap>
 
-      {/* Simplified HUD overlay */}
+      {/* Real-time HUD Status Overlay */}
       <div className="absolute inset-x-6 bottom-6 z-20 pointer-events-none">
         <div className="rounded-3xl border border-white/10 bg-black/60 p-5 backdrop-blur-2xl shadow-2xl relative pointer-events-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
@@ -154,20 +154,20 @@ export default function MapView({
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Target Station</p>
-                <p className="text-sm font-bold text-white">{bestStation?.name || "Locating Optimal..."}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Optimal Target</p>
+                <p className="text-sm font-bold text-white tracking-tight">{bestStation?.name || "Identifying Station..."}</p>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-6">
               <div className="text-right">
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Total ETA</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Est. Total Time</p>
                 <p className="text-2xl font-black text-white tracking-tighter">
-                  {bestStation?.totalEffectiveTime || "--"} <span className="text-[10px] text-cyan-400 font-bold ml-1">MIN</span>
+                  {bestStation?.totalEffectiveTime || "--"} <span className="text-[10px] text-cyan-400 font-bold ml-1 uppercase">Min</span>
                 </p>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                {mode}
+                {mode} Uplink
               </div>
             </div>
           </div>
