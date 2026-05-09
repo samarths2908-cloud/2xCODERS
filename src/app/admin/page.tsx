@@ -129,7 +129,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-headline font-bold text-primary">{st.averageWaitMinutes}m</td>
+                        <td className="px-6 py-4 font-headline font-bold text-primary">{st.avgSessionMinutes}m</td>
                         <td className="px-6 py-4 font-bold">${(Math.random() * 5000 + 2000).toFixed(0)}</td>
                       </tr>
                     ))}

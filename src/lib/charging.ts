@@ -1,4 +1,6 @@
-export type Station = {
+export type StationStatus = "Free" | "Busy" | "Charging" | "Delayed" | "Online";
+
+export interface Station {
   id: string;
   name: string;
   distanceKm: number;
@@ -7,15 +9,19 @@ export type Station = {
   chargerKW: number;
   batteryCapacityKWh: number;
   availablePorts: number;
-  status: "Free" | "Busy" | "Charging" | "Delayed";
-};
+  totalPorts: number;
+  status: StationStatus;
+}
 
-export type RankedStation = Station & {
+export interface StationRanking extends Station {
   travelTime: number;
   waitTime: number;
   chargeTime: number;
   totalEffectiveTime: number;
-};
+  recommendationScore: number;
+}
+
+export type RankedStation = StationRanking;
 
 export function estimateChargeTime(
   currentPercent: number,
@@ -24,15 +30,11 @@ export function estimateChargeTime(
   batteryCapacityKWh: number
 ): number {
   const percentToCharge = Math.max(0, targetPercent - currentPercent);
-
-  const energyNeededKWh =
-    (percentToCharge / 100) * batteryCapacityKWh;
+  const energyNeededKWh = (percentToCharge / 100) * batteryCapacityKWh;
 
   if (chargerKW <= 0) return Infinity;
 
-  const hours = energyNeededKWh / chargerKW;
-
-  return Math.ceil(hours * 60);
+  return Math.ceil((energyNeededKWh / chargerKW) * 60);
 }
 
 export function calculateTravelTime(
@@ -40,7 +42,6 @@ export function calculateTravelTime(
   averageSpeedKmph = 35
 ): number {
   if (averageSpeedKmph <= 0) return Infinity;
-
   return Math.ceil((distanceKm / averageSpeedKmph) * 60);
 }
 
@@ -63,28 +64,40 @@ export function rankStationsByFastestOption(
   stations: Station[],
   currentPercent: number,
   targetPercent: number
-): RankedStation[] {
+): StationRanking[] {
   return stations
     .map((station) => {
       const travelTime = calculateTravelTime(station.distanceKm);
-
       const waitTime = calculateWaitTime(
         station.queueLength,
         station.avgSessionMinutes
       );
-
       const chargeTime = estimateChargeTime(
         currentPercent,
         targetPercent,
         station.chargerKW,
         station.batteryCapacityKWh
       );
-
       const totalEffectiveTime = calculateTotalEffectiveTime(
         travelTime,
         waitTime,
         chargeTime
       );
+
+      const availablePortBonus = station.availablePorts > 0 ? -5 : 10;
+      const statusBonus =
+        station.status === "Free"
+          ? -10
+          : station.status === "Online"
+            ? -8
+            : station.status === "Busy"
+              ? 8
+              : station.status === "Charging"
+                ? 5
+                : 12;
+
+      const recommendationScore =
+        totalEffectiveTime + availablePortBonus + statusBonus;
 
       return {
         ...station,
@@ -92,10 +105,13 @@ export function rankStationsByFastestOption(
         waitTime,
         chargeTime,
         totalEffectiveTime,
+        recommendationScore,
       };
     })
-    .sort(
-      (a, b) =>
-        a.totalEffectiveTime - b.totalEffectiveTime
-    );
+    .sort((a, b) => {
+      if (a.totalEffectiveTime !== b.totalEffectiveTime) {
+        return a.totalEffectiveTime - b.totalEffectiveTime;
+      }
+      return a.recommendationScore - b.recommendationScore;
+    });
 }
