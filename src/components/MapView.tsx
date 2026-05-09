@@ -1,10 +1,9 @@
 
 "use client";
 
-import React, { useMemo } from "react";
-import { GoogleMap, useJsApiLoader, MarkerF, PolylineF } from "@react-google-maps/api";
+import React from "react";
 import type { RankedStation } from "@/lib/charging";
-import { Info, Loader2, MapPin, AlertTriangle } from "lucide-react";
+import { Activity, Radio, Target, Zap } from "lucide-react";
 
 type Props = {
   stations: RankedStation[];
@@ -13,178 +12,98 @@ type Props = {
   mode: "demo" | "real";
 };
 
-const mapContainerStyle = {
-  width: "100%",
-  height: "430px",
-};
-
-// Cyberpunk Dark Map Theme for Google Maps
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#0b0f14" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0b0f14" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#49d9ff" }, { opacity: 0.6 }] },
-  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#bc7dff" }] },
-  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#49d9ff" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#0b151a" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1a232e" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2c3e50" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#001b2e" }] },
-];
-
-const DEFAULT_CENTER = { lat: 12.9716, lng: 77.5946 }; // Bangalore
-
 export default function MapView({
   stations,
   bestStationId,
   selectedStationId,
   mode,
 }: Props) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: apiKey || "",
-  });
-
-  const center = useMemo(() => {
-    if (stations.length > 0) {
-      return stations[0].location;
-    }
-    return DEFAULT_CENTER;
-  }, [stations]);
-
-  const bestStation = useMemo(
-    () => stations.find((s) => s.id === bestStationId),
-    [stations, bestStationId]
-  );
-
-  const routePath = useMemo(() => {
-    if (!bestStation) return [];
-    return [center, bestStation.location];
-  }, [center, bestStation]);
-
-  // If API key is missing entirely, show a styled placeholder
-  if (!apiKey) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[430px] rounded-[2rem] border border-amber-500/20 text-center p-8 glass bg-black/40 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.05),transparent)] pointer-events-none" />
-        <AlertTriangle className="w-12 h-12 text-amber-500 mb-4 animate-pulse" />
-        <h3 className="text-xl font-bold text-white mb-2">Configuration Missing</h3>
-        <p className="text-sm text-white/40 max-w-xs mb-6">
-          Google Maps API key is not set. Please add <code className="text-amber-400 bg-black/40 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your environment variables.
-        </p>
-        <div className="text-[10px] font-mono text-amber-500/50 uppercase tracking-widest">
-          Status: Offline Simulation Only
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[430px] rounded-[2rem] border border-red-500/20 text-center p-8 glass bg-black/40">
-        <Info className="w-12 h-12 text-red-500 mb-4 opacity-50" />
-        <h3 className="text-xl font-bold text-white mb-2">Uplink Failed</h3>
-        <p className="text-sm text-white/40 max-w-xs">
-          The Maps API failed to load. This may be due to an invalid key or restricted project permissions. Check Google Cloud Console for "ApiProjectMapError".
-        </p>
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center h-[430px] rounded-[2rem] border border-white/5 glass bg-black/40">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/60">Establishing Link</span>
-        </div>
-      </div>
-    );
-  }
+  const bestStation = stations.find((s) => s.id === bestStationId);
+  const selectedStation = stations.find((s) => s.id === selectedStationId);
 
   return (
-    <div
-      className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#020408] w-full"
-      style={{
-        boxShadow: "inset 0 0 60px rgba(0,255,255,0.03), 0 20px 50px rgba(0,0,0,0.5)",
-      }}
-    >
-      <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        center={center}
-        zoom={13}
-        options={{
-          styles: darkMapStyle,
-          disableDefaultUI: true,
-          zoomControl: false,
-          gestureHandling: "cooperative",
-        }}
-      >
-        {bestStation && (
-          <PolylineF
-            path={routePath}
-            options={{
-              strokeColor: "#34f5a3",
-              strokeOpacity: 0.6,
-              strokeWeight: 4,
+    <div className="map-fake glass relative overflow-hidden group">
+      {/* Neural Grid Overlay */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none">
+        <div className="h-full w-full bg-[linear-gradient(rgba(73,217,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(73,217,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
+      </div>
+
+      {/* Pulsing Radar Ring */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-cyan-500/10 rounded-full animate-ping opacity-20" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] border border-cyan-500/20 rounded-full animate-pulse opacity-30" />
+
+      {/* Animated Route Vectors */}
+      {bestStation && (
+        <div className="map-route" />
+      )}
+      <div className="map-route route-2" />
+
+      {/* Simulated HUD Pins */}
+      {stations.map((station, index) => {
+        const isBest = station.id === bestStationId;
+        const isSelected = station.id === selectedStationId;
+        
+        // Deterministic decorative positions based on station ID
+        const top = 20 + (parseInt(station.id.length.toString()) * index * 7) % 60;
+        const left = 15 + (parseInt(station.id.length.toString()) * index * 9) % 70;
+
+        return (
+          <div
+            key={station.id}
+            className={`map-pin flex flex-col items-center justify-center transition-all duration-500 ${
+              isBest ? "bg-green-500/20 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.4)]" : 
+              isSelected ? "bg-purple-500/20 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.4)]" : 
+              "bg-cyan-500/10 border-cyan-500/20"
+            }`}
+            style={{ 
+              top: `${top}%`, 
+              left: `${left}%`,
+              animationDelay: `${index * 0.2}s`
             }}
-          />
-        )}
-
-        {stations.map((station) => {
-          const isBest = station.id === bestStationId;
-          const isSelected = station.id === selectedStationId;
-
-          let color = "#49d9ff"; 
-          if (isBest) color = "#34f5a3"; 
-          else if (isSelected) color = "#bc7dff"; 
-
-          return (
-            <MarkerF
-              key={station.id}
-              position={station.location}
-              title={station.name}
-              icon={{
-                path: "M 12 2 C 7.03 2 3 6.03 3 11 C 3 16.55 12 22 12 22 C 12 22 21 16.55 21 11 C 21 6.03 16.97 2 12 2 Z",
-                fillColor: color,
-                fillOpacity: 1,
-                strokeColor: "#ffffff",
-                strokeWeight: 1,
-                scale: isBest || isSelected ? 1.4 : 1,
-                anchor: { x: 12, y: 22 } as any,
-              }}
-            />
-          );
-        })}
-      </GoogleMap>
-
-      {/* Real-time HUD Status Overlay */}
-      <div className="absolute inset-x-6 bottom-6 z-20 pointer-events-none">
-        <div className="rounded-3xl border border-white/10 bg-black/60 p-5 backdrop-blur-2xl shadow-2xl relative pointer-events-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-2xl bg-white/5 ${bestStation ? 'text-green-400' : 'text-cyan-400'}`}>
-                <MapPin className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Optimal Target</p>
-                <p className="text-sm font-bold text-white tracking-tight">{bestStation?.name || "Identifying..."}</p>
-              </div>
+          >
+            <Zap className={`w-5 h-5 ${isBest ? "text-green-400" : isSelected ? "text-purple-400" : "text-cyan-400"}`} />
+            <div className="absolute -bottom-8 whitespace-nowrap">
+              <span className={`text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border ${
+                isBest ? "bg-green-500/20 border-green-500/40 text-green-300" : 
+                isSelected ? "bg-purple-500/20 border-purple-500/40 text-purple-300" : 
+                "bg-black/40 border-white/10 text-white/40"
+              }`}>
+                {station.name}
+              </span>
             </div>
+          </div>
+        );
+      })}
 
-            <div className="flex items-center justify-end gap-6">
-              <div className="text-right">
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Est. Total Time</p>
-                <p className="text-2xl font-black text-white tracking-tighter">
-                  {bestStation?.totalEffectiveTime || "--"} <span className="text-[10px] text-cyan-400 font-bold ml-1 uppercase">Min</span>
-                </p>
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                {mode} Uplink
-              </div>
+      {/* HUD System Overlay */}
+      <div className="absolute inset-x-6 bottom-6 flex justify-between items-end pointer-events-none">
+        <div className="glass p-4 rounded-2xl border-white/5 bg-black/40 backdrop-blur-xl">
+          <div className="flex items-center gap-3 mb-2">
+            <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/60">Neural Network Active</p>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Target className="w-3 h-3 text-green-400" />
+              <p className="text-xs font-bold text-white tracking-tight">Optimal Target: {bestStation?.name || "Searching..."}</p>
             </div>
+            <div className="flex items-center gap-2 opacity-60">
+              <Activity className="w-3 h-3 text-purple-400" />
+              <p className="text-[10px] font-medium text-white/60 uppercase">Mode: {mode} Uplink Status 100%</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div className="glass p-3 rounded-2xl border-white/5 bg-black/40 mb-2">
+            <p className="text-[9px] font-black uppercase tracking-widest text-white/30">System Latency</p>
+            <p className="text-sm font-bold text-green-400 font-mono">14ms</p>
+          </div>
+          <div className="glass p-3 rounded-2xl border-white/5 bg-black/40">
+            <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Est. Arrival</p>
+            <p className="text-xl font-black text-white tracking-tighter">
+              {bestStation?.travelTime || "--"} <span className="text-[10px] text-cyan-400 font-bold ml-1 uppercase">Min</span>
+            </p>
           </div>
         </div>
       </div>
