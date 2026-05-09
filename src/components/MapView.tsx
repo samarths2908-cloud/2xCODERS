@@ -1,110 +1,166 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import "leaflet/dist/leaflet.css";
 import type { RankedStation } from "@/lib/charging";
-import { Activity, Radio, Target, Zap } from "lucide-react";
 
-type Props = {
+interface MapViewProps {
   stations: RankedStation[];
-  bestStationId: string | null;
-  selectedStationId: string | null;
-  mode: "demo" | "real";
-};
+  bestStationId?: string | null;
+  selectedStationId?: string | null;
+  mode?: "demo" | "real";
+}
 
 export default function MapView({
   stations,
   bestStationId,
   selectedStationId,
-  mode,
-}: Props) {
-  const bestStation = stations.find((s) => s.id === bestStationId);
-  const selectedStation = stations.find((s) => s.id === selectedStationId);
+  mode = "demo",
+}: MapViewProps) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return (
+      <div className="relative h-[430px] w-full rounded-3xl border border-white/10 bg-[#07090f] flex items-center justify-center">
+        <div className="text-cyan-400/50 animate-pulse font-headline tracking-widest text-xs">
+          INITIALIZING GEOSPATIAL UPLINK...
+        </div>
+      </div>
+    );
+  }
+
+  // Next.js dynamic import alternative: standard require inside client check
+  const { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } = require("react-leaflet");
+  const L = require("leaflet");
+
+  // Fix missing marker icon issue
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  });
+
+  const center: [number, number] = stations.length > 0 
+    ? [stations[0].location.lat, stations[0].location.lng] 
+    : [12.9716, 77.5946];
+
+  const bestStation = stations.find(s => s.id === bestStationId);
+
+  // Custom icon colors using DivIcon for a cyberpunk neon feel
+  const createIcon = (color: string, isHighlighted: boolean) => {
+    const size = isHighlighted ? 22 : 14;
+    return L.divIcon({
+      className: "custom-leaflet-marker",
+      html: `
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          background-color: ${color};
+          border: 2px solid #fff;
+          border-radius: 50%;
+          box-shadow: 0 0 ${isHighlighted ? '20px' : '10px'} ${color};
+          transform: translate(-25%, -25%);
+        "></div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  };
 
   return (
-    <div className="map-fake glass relative overflow-hidden group">
-      {/* Neural Grid Overlay */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="h-full w-full bg-[linear-gradient(rgba(73,217,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(73,217,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
+    <div className="relative h-[430px] w-full rounded-3xl overflow-hidden border border-white/10 glass shadow-2xl">
+      <MapContainer 
+        center={center} 
+        zoom={13} 
+        style={{ height: "100%", width: "100%", zIndex: 1 }} 
+        scrollWheelZoom={true}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        />
+
+        {stations.map((station) => {
+          const isBest = station.id === bestStationId;
+          const isSelected = station.id === selectedStationId;
+          const color = isBest ? "#22c55e" : isSelected ? "#06b6d4" : "#a855f7";
+          
+          return (
+            <Marker 
+              key={station.id} 
+              position={[station.location.lat, station.location.lng]}
+              icon={createIcon(color, isBest || isSelected)}
+            >
+              <Popup className="cyberpunk-popup">
+                <div className="p-1 font-body text-slate-900 min-w-[180px]">
+                  <h4 className="font-bold border-b border-slate-200 pb-1 mb-2 text-primary">{station.name}</h4>
+                  <div className="space-y-1 text-xs">
+                    <p className="flex justify-between">
+                      <span className="font-semibold text-slate-500">Status:</span> 
+                      <span className={station.status === 'Free' ? 'text-green-600 font-bold' : 'text-amber-600 font-bold'}>{station.status}</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="font-semibold text-slate-500">Availability:</span> 
+                      <span className="font-mono">{station.availablePorts} / {station.totalPorts} ports</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="font-semibold text-slate-500">Queue:</span> 
+                      <span className="font-mono">{station.queueLength} vehicles</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="font-semibold text-slate-500">Distance:</span> 
+                      <span className="font-mono">{station.distanceKm.toFixed(1)} km</span>
+                    </p>
+                    <p className="flex justify-between border-t border-slate-100 pt-1 mt-1">
+                      <span className="font-semibold text-primary">Total ETA:</span> 
+                      <span className="font-bold text-primary font-headline">{station.totalEffectiveTime} min</span>
+                    </p>
+                  </div>
+                </div>
+              </Popup>
+              <Tooltip direction="top" offset={[0, -10]} opacity={0.9}>
+                <span className="font-bold text-xs">{station.name}</span>
+              </Tooltip>
+            </Marker>
+          );
+        })}
+
+        {bestStation && (
+          <Polyline 
+            positions={[center, [bestStation.location.lat, bestStation.location.lng]]}
+            pathOptions={{ color: '#22c55e', weight: 2, dashArray: '8, 12', opacity: 0.5 }}
+          />
+        )}
+      </MapContainer>
+
+      {/* Map HUD Overlays */}
+      <div className="absolute top-4 left-4 z-[500] pointer-events-none">
+        <div className="glass p-3 rounded-2xl border border-white/10 backdrop-blur-md">
+          <p className="tiny-label text-cyan-400">Tactical HUD</p>
+          <p className="text-[10px] text-white/50 uppercase tracking-widest">
+            {mode === 'demo' ? 'Uplink: Simulation' : 'Uplink: Real-Time'}
+          </p>
+        </div>
       </div>
 
-      {/* Pulsing Radar Ring */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-cyan-500/10 rounded-full animate-ping opacity-20" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] border border-cyan-500/20 rounded-full animate-pulse opacity-30" />
-
-      {/* Animated Route Vectors */}
-      {bestStation && (
-        <div className="map-route" />
-      )}
-      <div className="map-route route-2" />
-
-      {/* Simulated HUD Pins */}
-      {stations.map((station, index) => {
-        const isBest = station.id === bestStationId;
-        const isSelected = station.id === selectedStationId;
-        
-        // Deterministic decorative positions based on station ID
-        const top = 20 + (parseInt(station.id.length.toString()) * index * 7) % 60;
-        const left = 15 + (parseInt(station.id.length.toString()) * index * 9) % 70;
-
-        return (
-          <div
-            key={station.id}
-            className={`map-pin flex flex-col items-center justify-center transition-all duration-500 ${
-              isBest ? "bg-green-500/20 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.4)]" : 
-              isSelected ? "bg-purple-500/20 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.4)]" : 
-              "bg-cyan-500/10 border-cyan-500/20"
-            }`}
-            style={{ 
-              top: `${top}%`, 
-              left: `${left}%`,
-              animationDelay: `${index * 0.2}s`
-            }}
-          >
-            <Zap className={`w-5 h-5 ${isBest ? "text-green-400" : isSelected ? "text-purple-400" : "text-cyan-400"}`} />
-            <div className="absolute -bottom-8 whitespace-nowrap">
-              <span className={`text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border ${
-                isBest ? "bg-green-500/20 border-green-500/40 text-green-300" : 
-                isSelected ? "bg-purple-500/20 border-purple-500/40 text-purple-300" : 
-                "bg-black/40 border-white/10 text-white/40"
-              }`}>
-                {station.name}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* HUD System Overlay */}
-      <div className="absolute inset-x-6 bottom-6 flex justify-between items-end pointer-events-none">
-        <div className="glass p-4 rounded-2xl border-white/5 bg-black/40 backdrop-blur-xl">
-          <div className="flex items-center gap-3 mb-2">
-            <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/60">Neural Network Active</p>
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Target className="w-3 h-3 text-green-400" />
-              <p className="text-xs font-bold text-white tracking-tight">Optimal Target: {bestStation?.name || "Searching..."}</p>
-            </div>
-            <div className="flex items-center gap-2 opacity-60">
-              <Activity className="w-3 h-3 text-purple-400" />
-              <p className="text-[10px] font-medium text-white/60 uppercase">Mode: {mode} Uplink Status 100%</p>
-            </div>
-          </div>
+      <div className="absolute top-4 right-4 z-[500] pointer-events-none">
+        <div className="glass p-3 rounded-2xl border border-white/10 backdrop-blur-md text-right">
+          <p className="tiny-label text-green-400">Target Node</p>
+          <p className="text-xs font-bold text-white/90 truncate max-w-[120px]">
+            {bestStation?.name || "Searching..."}
+          </p>
         </div>
+      </div>
 
-        <div className="text-right">
-          <div className="glass p-3 rounded-2xl border-white/5 bg-black/40 mb-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/30">System Latency</p>
-            <p className="text-sm font-bold text-green-400 font-mono">14ms</p>
-          </div>
-          <div className="glass p-3 rounded-2xl border-white/5 bg-black/40">
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Est. Arrival</p>
-            <p className="text-xl font-black text-white tracking-tighter">
-              {bestStation?.travelTime || "--"} <span className="text-[10px] text-cyan-400 font-bold ml-1 uppercase">Min</span>
-            </p>
-          </div>
+      <div className="absolute bottom-4 left-4 z-[500] pointer-events-none">
+        <div className="glass px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
+          <p className="text-[9px] text-white/40 font-mono">GEO-COORD: {center[0].toFixed(4)}, {center[1].toFixed(4)}</p>
         </div>
       </div>
     </div>
