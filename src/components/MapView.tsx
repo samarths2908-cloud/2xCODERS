@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useMemo } from "react";
 import { GoogleMap, useJsApiLoader, MarkerF, PolylineF } from "@react-google-maps/api";
 import type { RankedStation } from "@/lib/charging";
-import { Info, Loader2, MapPin } from "lucide-react";
+import { Info, Loader2, MapPin, AlertTriangle } from "lucide-react";
 
 type Props = {
   stations: RankedStation[];
@@ -39,9 +40,11 @@ export default function MapView({
   selectedStationId,
   mode,
 }: Props) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: apiKey || "",
   });
 
   const center = useMemo(() => {
@@ -58,9 +61,25 @@ export default function MapView({
 
   const routePath = useMemo(() => {
     if (!bestStation) return [];
-    // Drawing a simple straight neural-link for the route
     return [center, bestStation.location];
   }, [center, bestStation]);
+
+  // If API key is missing entirely, show a styled placeholder
+  if (!apiKey) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[430px] rounded-[2rem] border border-amber-500/20 text-center p-8 glass bg-black/40 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.05),transparent)] pointer-events-none" />
+        <AlertTriangle className="w-12 h-12 text-amber-500 mb-4 animate-pulse" />
+        <h3 className="text-xl font-bold text-white mb-2">Configuration Missing</h3>
+        <p className="text-sm text-white/40 max-w-xs mb-6">
+          Google Maps API key is not set. Please add <code className="text-amber-400 bg-black/40 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your environment variables.
+        </p>
+        <div className="text-[10px] font-mono text-amber-500/50 uppercase tracking-widest">
+          Status: Offline Simulation Only
+        </div>
+      </div>
+    );
+  }
 
   if (loadError) {
     return (
@@ -68,7 +87,7 @@ export default function MapView({
         <Info className="w-12 h-12 text-red-500 mb-4 opacity-50" />
         <h3 className="text-xl font-bold text-white mb-2">Uplink Failed</h3>
         <p className="text-sm text-white/40 max-w-xs">
-          Google Maps API key is invalid or missing from environment variables.
+          The Maps API failed to load. This may be due to an invalid key or restricted project permissions. Check Google Cloud Console for "ApiProjectMapError".
         </p>
       </div>
     );
@@ -77,7 +96,10 @@ export default function MapView({
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-[430px] rounded-[2rem] border border-white/5 glass bg-black/40">
-        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/60">Establishing Link</span>
+        </div>
       </div>
     );
   }
@@ -107,13 +129,6 @@ export default function MapView({
               strokeColor: "#34f5a3",
               strokeOpacity: 0.6,
               strokeWeight: 4,
-              icons: [
-                {
-                  icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 4 },
-                  offset: "0",
-                  repeat: "20px",
-                },
-              ],
             }}
           />
         )}
@@ -122,9 +137,9 @@ export default function MapView({
           const isBest = station.id === bestStationId;
           const isSelected = station.id === selectedStationId;
 
-          let color = "#49d9ff"; // Default cyan
-          if (isBest) color = "#34f5a3"; // Best green
-          else if (isSelected) color = "#bc7dff"; // Selected purple
+          let color = "#49d9ff"; 
+          if (isBest) color = "#34f5a3"; 
+          else if (isSelected) color = "#bc7dff"; 
 
           return (
             <MarkerF
@@ -137,7 +152,7 @@ export default function MapView({
                 fillOpacity: 1,
                 strokeColor: "#ffffff",
                 strokeWeight: 1,
-                scale: isBest || isSelected ? 1.5 : 1,
+                scale: isBest || isSelected ? 1.4 : 1,
                 anchor: { x: 12, y: 22 } as any,
               }}
             />
@@ -155,7 +170,7 @@ export default function MapView({
               </div>
               <div>
                 <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Optimal Target</p>
-                <p className="text-sm font-bold text-white tracking-tight">{bestStation?.name || "Identifying Station..."}</p>
+                <p className="text-sm font-bold text-white tracking-tight">{bestStation?.name || "Identifying..."}</p>
               </div>
             </div>
 
