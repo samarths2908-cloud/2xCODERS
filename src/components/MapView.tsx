@@ -19,10 +19,15 @@ export const MapView: React.FC<MapViewProps> = ({
   userLocation 
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [radarPulse, setRadarPulse] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 800);
-    return () => clearTimeout(timer);
+    const interval = setInterval(() => setRadarPulse(p => (p + 1) % 100), 2000);
+    return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+    };
   }, []);
 
   if (!isLoaded) {
@@ -42,7 +47,7 @@ export const MapView: React.FC<MapViewProps> = ({
     <div className="relative w-full h-full bg-[#050505]/80 rounded-2xl overflow-hidden shadow-2xl border border-white/10" style={{ minHeight: '430px' }}>
       {/* Grid Pattern */}
       <div 
-        className="absolute inset-0 opacity-10"
+        className="absolute inset-0 opacity-10 pointer-events-none"
         style={{
           backgroundImage: 'linear-gradient(#444 1px, transparent 1px), linear-gradient(90deg, #444 1px, transparent 1px)',
           backgroundSize: '40px 40px'
@@ -55,6 +60,12 @@ export const MapView: React.FC<MapViewProps> = ({
           <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-widest text-white/70">RADAR ACTIVE</span>
         </div>
+      </div>
+
+      {/* Radar Pulse Effect */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
+          <div className="w-[400px] h-[400px] border border-primary/5 rounded-full scale-[0.5] opacity-50" />
+          <div className="w-[600px] h-[600px] border border-primary/5 rounded-full scale-[0.3] opacity-30" />
       </div>
 
       {/* User Location Marker (Center) */}
@@ -71,8 +82,8 @@ export const MapView: React.FC<MapViewProps> = ({
       {stations.map((station, idx) => {
         const isSelected = selectedStation?.id === station.id;
         
-        // Mocking positions for the visual demo relative to center
-        // In a real app, these would be calculated from real lat/long relative to userLat/long
+        // Mock positions for the visual demo relative to center
+        // In a real HUD we'd use local coords
         const top = 50 + (idx === 0 ? -25 : idx === 1 ? 18 : idx === 2 ? -12 : 30);
         const left = 50 + (idx === 0 ? 30 : idx === 1 ? -22 : idx === 2 ? -35 : 20);
 
@@ -83,7 +94,7 @@ export const MapView: React.FC<MapViewProps> = ({
               e.stopPropagation();
               onStationClick(station);
             }}
-            className={`absolute cursor-pointer transition-all duration-500 group/pin ${isSelected ? 'scale-125 z-30' : 'hover:scale-110'}`}
+            className={`absolute cursor-pointer transition-all duration-500 group/pin ${isSelected ? 'scale-125 z-30' : 'hover:scale-110 z-20'}`}
             style={{ top: `${top}%`, left: `${left}%`, transform: 'translate(-50%, -50%)' }}
           >
             <div className="flex flex-col items-center">
@@ -91,6 +102,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 isSelected ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(73,217,255,0.4)]' : 'bg-black/60 border-white/10 text-white/70'
               }`}>
                 <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">{station.name}</span>
+                {station.availablePorts > 0 && !isSelected && <span className="ml-2 text-green-400 font-bold">{station.availablePorts}P</span>}
               </div>
               <div className={`p-2 rounded-full transition-all border ${
                 isSelected ? 'bg-white text-primary border-primary' : 'bg-black/80 text-white border-white/20'

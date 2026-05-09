@@ -1,20 +1,23 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { StationRanking } from '@/lib/charging';
+import { RankedStation } from '@/lib/charging';
 import { Sparkles, Navigation, Clock, Battery, Route } from 'lucide-react';
 
 interface RecommendationPanelProps {
-  station: StationRanking;
-  onBook: (station: StationRanking) => void;
+  station: RankedStation;
+  onBook: (station: RankedStation) => void;
 }
 
 export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ station, onBook }) => {
+  if (!station) return null;
+
   return (
     <Card className="relative overflow-hidden border-none bg-gradient-to-br from-primary/20 via-black/40 to-accent/10 backdrop-blur-3xl shadow-2xl">
       {/* Decorative background pulse */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 blur-[100px] rounded-full animate-pulse" />
-      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent/20 blur-[100px] rounded-full animate-pulse" />
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 blur-[100px] rounded-full animate-pulse pointer-events-none" />
+      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent/20 blur-[100px] rounded-full animate-pulse pointer-events-none" />
       
       <CardContent className="p-8 space-y-8 relative z-10">
         <div className="flex justify-between items-start">
@@ -31,33 +34,40 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ statio
           
           <div className="text-right">
             <div className="text-6xl font-black font-headline text-white tracking-tighter drop-shadow-[0_0_10px_rgba(56,126,230,0.5)]">
-              {station.estimates.totalTime}
+              {station.totalEffectiveTime}
             </div>
             <div className="text-xs font-black text-primary uppercase tracking-widest">Minutes Total</div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div className="space-y-1">
             <div className="flex items-center space-x-2 text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
               <Route className="w-3 h-3 text-primary" />
               <span>Travel</span>
             </div>
-            <div className="text-xl font-bold text-white">{station.estimates.travelTime}m</div>
+            <div className="text-xl font-bold text-white">{station.travelTime}m</div>
           </div>
           <div className="space-y-1 border-x border-white/10 px-4">
             <div className="flex items-center space-x-2 text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
               <Clock className="w-3 h-3 text-accent" />
               <span>Wait</span>
             </div>
-            <div className="text-xl font-bold text-white">{station.estimates.waitTime}m</div>
+            <div className="text-xl font-bold text-white">{station.waitTime}m</div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 pr-4">
             <div className="flex items-center space-x-2 text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
               <Battery className="w-3 h-3 text-green-400" />
               <span>Charge</span>
             </div>
-            <div className="text-xl font-bold text-white">{station.estimates.chargeTime}m</div>
+            <div className="text-xl font-bold text-white">{station.chargeTime}m</div>
+          </div>
+           <div className="space-y-1 border-l border-white/10 pl-4">
+            <div className="flex items-center space-x-2 text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
+              <span className="text-primary">⚡</span>
+              <span>Power</span>
+            </div>
+            <div className="text-xl font-bold text-white">{station.chargerKW}kW</div>
           </div>
         </div>
 
