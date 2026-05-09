@@ -1,288 +1,238 @@
 "use client";
 
-import React, { useState } from 'react';
-import { SidebarProvider, SidebarInset, SidebarTrigger, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { ChargingMap } from '@/components/map/ChargingMap';
-import { StationCard } from '@/components/dashboard/StationCard';
-import { BookingPanel } from '@/components/booking/BookingPanel';
-import { MOCK_STATIONS, CURRENT_USER } from '@/lib/mock-data';
-import { Station, User } from '@/lib/types';
-import { Zap, Map as MapIcon, Settings, LayoutDashboard, History, Bell, LogOut, Search, Filter, Sparkles, BrainCircuit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { SidebarProvider, SidebarInset, SidebarTrigger, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+import { MapView } from '@/components/MapView';
+import { StationCard } from '@/components/StationCard';
+import { RecommendationPanel } from '@/components/RecommendationPanel';
+import { fetchNearbyStations } from '@/lib/api';
+import { rankStationsByFastestOption, StationRanking } from '@/lib/charging';
+import { CURRENT_USER } from '@/lib/mock-data';
+import { Zap, LayoutDashboard, History, Bell, LogOut, Settings, Search, Filter, Loader2, Gauge } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
-import { explainOptimalStationChoice } from '@/ai/flows/explain-optimal-station-choice';
-import { predictCongestionInsight } from '@/ai/flows/predict-congestion-insight';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
 
 export default function WattWiseApp() {
-  const [stations, setStations] = useState<Station[]>(MOCK_STATIONS);
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [user, setUser] = useState<User>(CURRENT_USER);
-  const [activeTab, setActiveTab] = useState('stations');
+  const [stations, setStations] = useState<StationRanking[]>([]);
+  const [selectedStation, setSelectedStation] = useState<StationRanking | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(true);
-  
-  // AI State
-  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
-  const [congestionInsight, setCongestionInsight] = useState<string | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isInsightDialogOpen, setIsInsightDialogOpen] = useState(false);
+  const [currentBat, setCurrentBat] = useState(22);
+  const [targetBat, setTargetBat] = useState(85);
 
-  const handleStationSelect = (station: Station) => {
-    setSelectedStation(station);
-    setActiveTab('plan');
+  const userLocation = { latitude: 34.0522, longitude: -118.2437 };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const rawStations = await fetchNearbyStations(isDemoMode);
+      const ranked = rankStationsByFastestOption(
+        rawStations,
+        userLocation,
+        currentBat,
+        targetBat,
+        CURRENT_USER.batteryCapacityKWh
+      );
+      setStations(ranked);
+      setIsLoading(false);
+    };
+    loadData();
+  }, [isDemoMode, currentBat, targetBat]);
+
+  const bestStation = stations[0];
+
+  const handleBooking = (station: StationRanking) => {
     toast({
-      title: "Station Selected",
-      description: `Optimizing route for ${station.name}...`,
-    });
-  };
-
-  const handleGetAiExplanation = async (currentBat: number, targetBat: number) => {
-    if (!selectedStation) return;
-    setIsAiLoading(true);
-    try {
-      const result = await explainOptimalStationChoice({
-        userLocation: { latitude: 34.0522, longitude: -118.2437 },
-        currentBatteryPercentage: currentBat,
-        targetBatteryPercentage: targetBat,
-        recommendedStation: {
-          id: selectedStation.id,
-          name: selectedStation.name,
-          location: selectedStation.location,
-          totalEstimatedMinutes: selectedStation.averageWaitMinutes + 15 + 30, // Mocked totals
-          travelMinutes: 15,
-          waitMinutes: selectedStation.averageWaitMinutes,
-          chargeMinutes: 30,
-          reason: selectedStation.congestionLevel < 0.3 ? "Low congestion detected." : undefined,
-        },
-        otherStationsConsidered: stations
-          .filter(s => s.id !== selectedStation.id)
-          .map(s => ({
-            id: s.id,
-            name: s.name,
-            location: s.location,
-            totalEstimatedMinutes: s.averageWaitMinutes + 45
-          }))
-      });
-      setAiExplanation(result.explanation);
-      setIsInsightDialogOpen(true);
-    } catch (error) {
-      toast({
-        title: "AI Analysis Failed",
-        description: "Could not generate explanation. Check your API key.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  const handleGetCongestionInsight = async () => {
-    if (!selectedStation) return;
-    setIsAiLoading(true);
-    try {
-      const result = await predictCongestionInsight({
-        stationName: selectedStation.name,
-        currentDateTime: new Date().toISOString(),
-        historicalDemandSummary: "Usually busy during weekday evenings, quiet mornings.",
-        currentQueueLength: selectedStation.totalPorts - selectedStation.availablePorts,
-        averageChargingTime: 35,
-        upcomingEvents: ["City Marathon nearby", "Tech Conference downtown"]
-      });
-      setCongestionInsight(result.insight);
-      setIsInsightDialogOpen(true);
-    } catch (error) {
-      toast({
-        title: "AI Prediction Failed",
-        description: "Could not predict congestion. Check your API key.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  const handleBooking = (station: Station, estimates: any) => {
-    toast({
-      title: "Booking Confirmed!",
-      description: `Port reserved at ${station.name}. ETA: ${estimates.totalTime} mins.`,
+      title: "Navigation Locked",
+      description: `Optimized route to ${station.name} synced to vehicle.`,
     });
   };
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-background overflow-hidden">
-        <Sidebar className="border-r border-border bg-white" collapsible="icon">
-          <SidebarHeader className="p-6 border-b border-border">
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="bg-primary p-2 rounded-xl shadow-lg shadow-primary/20">
+      <div className="flex h-screen w-full bg-[#050505] text-white font-body overflow-hidden">
+        {/* Futuristic Sidebar */}
+        <Sidebar className="border-r border-white/5 bg-black/60 backdrop-blur-3xl" collapsible="icon">
+          <SidebarHeader className="p-8">
+            <div className="flex items-center space-x-4">
+              <div className="bg-primary p-2.5 rounded-2xl shadow-[0_0_20px_rgba(56,126,230,0.5)]">
                 <Zap className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-black font-headline tracking-tighter group-data-[collapsible=icon]:hidden">WATTWISE <span className="text-accent">EV</span></span>
+              <span className="text-2xl font-black font-headline tracking-tighter group-data-[collapsible=icon]:hidden">
+                WATT<span className="text-primary">WISE</span>
+              </span>
             </div>
           </SidebarHeader>
-          <SidebarContent className="p-4">
-            <SidebarGroup>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === 'stations'} onClick={() => setActiveTab('stations')} tooltip="Dashboard">
-                    <LayoutDashboard className="w-5 h-5" />
-                    <span>Explorer</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === 'plan'} onClick={() => setActiveTab('plan')} tooltip="Plan Route">
-                    <MapIcon className="w-5 h-5" />
-                    <span>Smart Planner</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Activity History">
-                    <History className="w-5 h-5" />
-                    <span>My Charging</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Notifications">
-                    <Bell className="w-5 h-5" />
-                    <span>Alerts</span>
-                    <Badge className="ml-auto bg-accent text-accent-foreground text-[10px] px-1 group-data-[collapsible=icon]:hidden">3</Badge>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroup>
+          
+          <SidebarContent className="px-4 py-8">
+            <SidebarMenu className="space-y-4">
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase text-[10px] tracking-widest px-6 py-6 rounded-2xl">
+                  <LayoutDashboard className="w-5 h-5 mr-3 text-primary" />
+                  <span>Fleet Explorer</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton className="hover:bg-white/5 text-muted-foreground hover:text-white font-black uppercase text-[10px] tracking-widest px-6 py-6 rounded-2xl">
+                  <History className="w-5 h-5 mr-3" />
+                  <span>Activity Logs</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton className="hover:bg-white/5 text-muted-foreground hover:text-white font-black uppercase text-[10px] tracking-widest px-6 py-6 rounded-2xl">
+                  <Bell className="w-5 h-5 mr-3" />
+                  <span>Proximity Alerts</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter className="p-6 border-t border-border">
-            <div className="flex items-center space-x-3 group-data-[collapsible=icon]:hidden">
-              <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
-                <img src="https://picsum.photos/seed/user/100/100" alt="Avatar" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-bold truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.carModel}</p>
+
+          <SidebarFooter className="p-8 border-t border-white/5">
+            <div className="flex items-center justify-between group-data-[collapsible=icon]:hidden">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                  <span className="font-black text-primary">AD</span>
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest">{CURRENT_USER.name}</p>
+                  <p className="text-[10px] text-muted-foreground font-bold">{CURRENT_USER.carModel}</p>
+                </div>
               </div>
               <LogOut className="w-4 h-4 text-muted-foreground hover:text-destructive cursor-pointer" />
             </div>
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex-1 flex flex-col min-w-0 bg-background">
-          <header className="h-16 border-b border-border bg-white/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-40">
-            <div className="flex items-center space-x-4">
-              <SidebarTrigger />
-              <div className="h-4 w-px bg-border mx-2" />
-              <h2 className="text-sm font-black font-headline uppercase tracking-widest text-muted-foreground">
-                {activeTab === 'stations' ? 'Live Station Feed' : 'Route Optimization'}
+        <SidebarInset className="flex-1 flex flex-col bg-transparent relative">
+          {/* Header */}
+          <header className="h-20 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-between px-10 sticky top-0 z-40">
+            <div className="flex items-center space-x-6">
+              <SidebarTrigger className="text-white hover:bg-white/5" />
+              <div className="h-6 w-px bg-white/10" />
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">
+                Network Status: <span className="text-green-400">OPTIMAL</span>
               </h2>
             </div>
             
-            <div className="flex items-center space-x-3">
-              <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary cursor-pointer hover:bg-primary hover:text-white transition-colors">
-                {isDemoMode ? 'Demo Mode Active' : 'Real-time Feed'}
-              </Badge>
-              <div className="p-2 bg-muted rounded-full hover:bg-muted/80 cursor-pointer">
-                <Settings className="w-5 h-5 text-muted-foreground" />
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
+                <Gauge className="w-4 h-4 text-primary" />
+                <span className="text-xs font-black uppercase tracking-widest">Real-Time Sync</span>
               </div>
+              <Settings className="w-5 h-5 text-muted-foreground hover:text-white cursor-pointer transition-colors" />
             </div>
           </header>
 
-          <main className="flex-1 overflow-hidden flex flex-col md:flex-row p-4 gap-4">
-            <div className="w-full md:w-[450px] flex flex-col gap-4 order-2 md:order-1">
-              {activeTab === 'stations' ? (
-                <>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input placeholder="Search stations..." className="pl-9 bg-white border-border" />
+          <main className="flex-1 p-8 flex flex-col lg:flex-row gap-8 overflow-hidden">
+            {/* Control Sidebar */}
+            <div className="w-full lg:w-[480px] flex flex-col gap-6 order-2 lg:order-1">
+              {/* Charge Config Card */}
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl space-y-8 shadow-xl">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-black font-headline uppercase tracking-widest flex items-center">
+                    <Zap className="w-5 h-5 mr-3 text-primary" />
+                    Power Sync
+                  </h3>
+                  <Badge variant="outline" className="border-primary/50 text-primary font-black uppercase text-[10px]">
+                    {isDemoMode ? 'SIMULATED DATA' : 'LIVE GRID'}
+                  </Badge>
+                </div>
+
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Current Charge</span>
+                      <span className="text-2xl font-black text-primary font-headline">{currentBat}%</span>
                     </div>
-                    <Button variant="outline" size="icon" className="bg-white">
-                      <Filter className="w-4 h-4" />
-                    </Button>
+                    <Slider 
+                      value={[currentBat]} 
+                      onValueChange={(v) => setCurrentBat(v[0])}
+                      max={100}
+                      className="py-4"
+                    />
                   </div>
-                  
-                  <ScrollArea className="flex-1">
-                    <div className="space-y-4 pb-4">
-                      {stations.map((st) => (
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Target Threshold</span>
+                      <span className="text-2xl font-black text-accent font-headline">{targetBat}%</span>
+                    </div>
+                    <Slider 
+                      value={[targetBat]} 
+                      onValueChange={(v) => setTargetBat(Math.max(v[0], currentBat + 10))}
+                      min={currentBat}
+                      max={100}
+                      className="py-4"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Station List */}
+              <div className="flex-1 flex flex-col min-h-0 space-y-4">
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="SCANNING NEARBY HUBS..." 
+                      className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest placeholder:text-muted-foreground/50 focus:ring-primary/50" 
+                    />
+                  </div>
+                  <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl bg-white/5 border-white/10 hover:bg-white/10">
+                    <Filter className="w-4 h-4 text-white" />
+                  </Button>
+                </div>
+
+                <ScrollArea className="flex-1">
+                  <div className="space-y-4 pb-10">
+                    {isLoading ? (
+                      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Decoding grid telemetry...</p>
+                      </div>
+                    ) : (
+                      stations.map((st, idx) => (
                         <StationCard 
                           key={st.id} 
                           station={st} 
-                          onSelect={handleStationSelect}
-                          isRecommended={st.id === 'st-3'}
+                          onSelect={setSelectedStation}
+                          isRecommended={idx === 0}
                         />
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </>
-              ) : (
-                <ScrollArea className="flex-1">
-                  <BookingPanel 
-                    user={user} 
-                    stations={stations} 
-                    onBook={handleBooking}
-                    onExplain={handleGetAiExplanation}
-                    onPredict={handleGetCongestionInsight}
-                    isAiLoading={isAiLoading}
-                  />
+                      ))
+                    )}
+                  </div>
                 </ScrollArea>
-              )}
+              </div>
             </div>
 
-            <div className="flex-1 min-h-[400px] order-1 md:order-2">
-              <ChargingMap 
-                stations={stations} 
-                selectedStation={selectedStation} 
-                onStationClick={handleStationSelect}
-                userLocation={{ lat: 34.0522, lng: -118.2437 }}
-              />
+            {/* Map & Recommendation Area */}
+            <div className="flex-1 flex flex-col gap-8 order-1 lg:order-2">
+              <div className="flex-1 relative">
+                <MapView 
+                  stations={stations}
+                  selectedStation={selectedStation || bestStation}
+                  onStationClick={setSelectedStation}
+                  userLocation={userLocation}
+                />
+              </div>
+
+              {/* Recommendation HUD */}
+              {bestStation && (
+                <div className="animate-in slide-in-from-bottom-8 duration-700">
+                  <RecommendationPanel 
+                    station={selectedStation || bestStation} 
+                    onBook={handleBooking} 
+                  />
+                </div>
+              )}
             </div>
           </main>
         </SidebarInset>
-
-        <Dialog open={isInsightDialogOpen} onOpenChange={(open) => {
-          setIsInsightDialogOpen(open);
-          if (!open) {
-            setAiExplanation(null);
-            setCongestionInsight(null);
-          }
-        }}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center text-xl font-headline">
-                <BrainCircuit className="w-6 h-6 mr-2 text-primary" />
-                AI Smart Insight
-              </DialogTitle>
-              <DialogDescription>
-                Generating insights based on real-time data and historical patterns.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-4 p-4 bg-muted/30 rounded-xl border border-border">
-              {aiExplanation && (
-                <div className="space-y-2">
-                  <h4 className="font-bold text-sm text-primary flex items-center">
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Recommendation Logic
-                  </h4>
-                  <p className="text-sm leading-relaxed text-foreground/90">{aiExplanation}</p>
-                </div>
-              )}
-              {congestionInsight && (
-                <div className="space-y-2">
-                  <h4 className="font-bold text-sm text-accent flex items-center">
-                    <History className="w-3 h-3 mr-1" />
-                    Congestion Forecast
-                  </h4>
-                  <p className="text-sm leading-relaxed text-foreground/90">{congestionInsight}</p>
-                </div>
-              )}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={() => setIsInsightDialogOpen(false)}>Close Insight</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         <Toaster />
       </div>
