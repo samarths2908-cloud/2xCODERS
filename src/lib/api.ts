@@ -1,71 +1,45 @@
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import { Station } from './types';
-import { MOCK_STATIONS } from './mock-data';
+// src/lib/api.ts
 
-/**
- * Fetches nearby EV charging stations. 
- * Defaults to mock data in demo mode.
- */
-export const fetchNearbyStations = async (isDemo: boolean = true): Promise<Station[]> => {
-  if (isDemo) {
-    return new Promise((resolve) => setTimeout(() => resolve(MOCK_STATIONS), 800));
+const GOOGLE_MAPS_API_KEY =
+  "AIzaSyB8n750mf7SzyxAZJRNXMpD3_h9pa4hXc8";
+
+const OPEN_CHARGE_MAP_API_KEY =
+  "03c8f7a7-9af8-4fc4-a25f-d5268c606191";
+
+export async function fetchNearbyStations(
+  latitude: number,
+  longitude: number
+) {
+  const response = await fetch(
+    `https://api.openchargemap.io/v3/poi/?output=json&latitude=${latitude}&longitude=${longitude}&distance=15&maxresults=20&key=${OPEN_CHARGE_MAP_API_KEY}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch charging stations");
   }
 
-  try {
-    const stationsRef = collection(db, 'stations');
-    const q = query(stationsRef, where('status', '==', 'Online'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Station[];
-  } catch (error) {
-    console.error("Error fetching stations:", error);
-    return MOCK_STATIONS;
-  }
-};
+  return response.json();
+}
 
-/**
- * Fetches current availability for a specific station.
- */
-export const fetchStationAvailability = async (stationId: string, isDemo: boolean = true): Promise<Partial<Station>> => {
-  if (isDemo) {
-    const station = MOCK_STATIONS.find(s => s.id === stationId);
-    return { 
-      availablePorts: station?.availablePorts || 0,
-      status: station?.status || 'Online'
-    };
+export async function fetchRouteETA(
+  origin: string,
+  destination: string
+) {
+  const response = await fetch(
+    `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destination}&key=${GOOGLE_MAPS_API_KEY}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch route ETA");
   }
 
-  try {
-    const docRef = doc(db, 'stations', stationId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
-        availablePorts: data.availablePorts,
-        status: data.status
-      };
-    }
-    return {};
-  } catch (error) {
-    console.error("Error fetching station availability:", error);
-    return {};
-  }
-};
+  return response.json();
+}
 
-/**
- * Mock function for route ETA calculation. 
- * In production, this would call Google Maps Distance Matrix API.
- */
-export const fetchRouteETA = async (origin: {lat: number, lng: number}, destination: {lat: number, lng: number}) => {
-  return { travelMinutes: 15 };
-};
-
-/**
- * Mock function for map-specific data layers.
- */
-export const fetchMapData = async () => {
-  return { layers: [] };
-};
+export async function fetchStationAvailability() {
+  return {
+    availablePorts: Math.floor(Math.random() * 4),
+    queueLength: Math.floor(Math.random() * 5),
+    updatedAt: new Date().toISOString(),
+  };
+}

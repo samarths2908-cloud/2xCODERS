@@ -1,241 +1,259 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { SidebarProvider, SidebarInset, SidebarTrigger, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { MapView } from '@/components/MapView';
-import { StationCard } from '@/components/StationCard';
-import { RecommendationPanel } from '@/components/RecommendationPanel';
-import { fetchNearbyStations } from '@/lib/api';
-import { rankStationsByFastestOption, StationRanking } from '@/lib/charging';
-import { CURRENT_USER } from '@/lib/mock-data';
-import { Zap, LayoutDashboard, History, Bell, LogOut, Settings, Search, Filter, Loader2, Gauge } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
-import { Toaster } from '@/components/ui/toaster';
-import { toast } from '@/hooks/use-toast';
+import React, { useMemo } from "react";
+import { demoStations } from "@/lib/mock-data";
+import { rankStationsByFastestOption, RankedStation } from "@/lib/charging";
 
-export default function WattWiseApp() {
-  const [stations, setStations] = useState<StationRanking[]>([]);
-  const [selectedStation, setSelectedStation] = useState<StationRanking | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(true);
-  const [currentBat, setCurrentBat] = useState(22);
-  const [targetBat, setTargetBat] = useState(85);
+function statusClass(status: RankedStation["status"]) {
+  switch (status) {
+    case "Free":
+      return "status free";
+    case "Busy":
+      return "status busy";
+    case "Charging":
+      return "status charging";
+    case "Delayed":
+      return "status delayed";
+    default:
+      return "status";
+  }
+}
 
-  const userLocation = { latitude: 34.0522, longitude: -118.2437 };
+export default function Page() {
+  // Config
+  const currentBattery = 34;
+  const targetBattery = 80;
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const rawStations = await fetchNearbyStations(isDemoMode);
-      const ranked = rankStationsByFastestOption(
-        rawStations,
-        userLocation,
-        currentBat,
-        targetBat,
-        CURRENT_USER.batteryCapacityKWh
-      );
-      setStations(ranked);
-      setIsLoading(false);
-    };
-    loadData();
-  }, [isDemoMode, currentBat, targetBat]);
+  // Calculate ranked stations
+  const rankedStations = useMemo(() => {
+    return rankStationsByFastestOption(demoStations, currentBattery, targetBattery);
+  }, [currentBattery, targetBattery]);
 
-  const bestStation = stations[0];
-
-  const handleBooking = (station: StationRanking) => {
-    toast({
-      title: "Navigation Locked",
-      description: `Optimized route to ${station.name} synced to vehicle.`,
-    });
-  };
+  const bestStation = rankedStations[0];
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full bg-[#050505] text-white font-body overflow-hidden">
-        {/* Futuristic Sidebar */}
-        <Sidebar className="border-r border-white/5 bg-black/60 backdrop-blur-3xl" collapsible="icon">
-          <SidebarHeader className="p-8">
-            <div className="flex items-center space-x-4">
-              <div className="bg-primary p-2.5 rounded-2xl shadow-[0_0_20px_rgba(56,126,230,0.5)]">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-black font-headline tracking-tighter group-data-[collapsible=icon]:hidden">
-                WATT<span className="text-primary">WISE</span>
-              </span>
-            </div>
-          </SidebarHeader>
-          
-          <SidebarContent className="px-4 py-8">
-            <SidebarMenu className="space-y-4">
-              <SidebarMenuItem>
-                <SidebarMenuButton isActive className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase text-[10px] tracking-widest px-6 py-6 rounded-2xl">
-                  <LayoutDashboard className="w-5 h-5 mr-3 text-primary" />
-                  <span>Fleet Explorer</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton className="hover:bg-white/5 text-muted-foreground hover:text-white font-black uppercase text-[10px] tracking-widest px-6 py-6 rounded-2xl">
-                  <History className="w-5 h-5 mr-3" />
-                  <span>Activity Logs</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton className="hover:bg-white/5 text-muted-foreground hover:text-white font-black uppercase text-[10px] tracking-widest px-6 py-6 rounded-2xl">
-                  <Bell className="w-5 h-5 mr-3" />
-                  <span>Proximity Alerts</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarContent>
+    <main className="page-shell">
+      <div className="bg-particles" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
 
-          <SidebarFooter className="p-8 border-t border-white/5">
-            <div className="flex items-center justify-between group-data-[collapsible=icon]:hidden">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                  <span className="font-black text-primary">AD</span>
+      <div className="bg-orb orb-1" aria-hidden="true" />
+      <div className="bg-orb orb-2" aria-hidden="true" />
+      <div className="bg-grid" aria-hidden="true" />
+
+      <aside className="sidebar glass">
+        <div>
+          <div className="brand-mark">W</div>
+          <div className="brand-text">
+            <h1>WattWise EV</h1>
+            <p>Smart charging command center</p>
+          </div>
+        </div>
+
+        <nav className="side-nav">
+          <button className="nav-btn active">Dashboard</button>
+          <button className="nav-btn">Map</button>
+          <button className="nav-btn">Queue</button>
+          <button className="nav-btn">Reroute</button>
+          <button className="nav-btn">Admin</button>
+        </nav>
+
+        <div className="side-footer">
+          <div className="tiny-label">Mode</div>
+          <div className="mode-switch">
+            <span className="mode active">Demo</span>
+            <span className="mode">Real</span>
+          </div>
+        </div>
+      </aside>
+
+      <section className="content">
+        <header className="hero glass">
+          <div>
+            <p className="eyebrow">EV CHARGING INTELLIGENCE SYSTEM</p>
+            <h2>Fastest station. Lowest wait. Smart reroute.</h2>
+            <p className="hero-sub">
+              Compare travel time, queue time, and charging time in real time to guide every vehicle to the best available charger.
+            </p>
+          </div>
+
+          <div className="hero-stats">
+            <div className="stat-card">
+              <span className="tiny-label">Best station</span>
+              <strong>{bestStation?.name || "Searching..."}</strong>
+              <small>{bestStation?.totalEffectiveTime || 0} min total</small>
+            </div>
+            <div className="stat-card">
+              <span className="tiny-label">Queue wait</span>
+              <strong>{bestStation?.waitTime || 0} Min</strong>
+              <small>Live update</small>
+            </div>
+            <div className="stat-card">
+              <span className="tiny-label">Free ports</span>
+              <strong>0{bestStation?.availablePorts || 0} Ports</strong>
+              <small>Ready now</small>
+            </div>
+          </div>
+        </header>
+
+        <section className="grid-layout">
+          <div className="panel glass map-panel">
+            <div className="panel-head">
+              <div>
+                <p className="tiny-label">LIVE MAP</p>
+                <h3>Station availability and reroute view</h3>
+              </div>
+              <button className="glow-btn">Instant Switch</button>
+            </div>
+
+            <div className="map-fake">
+              <div className="map-pin pin-1">A</div>
+              <div className="map-pin pin-2">B</div>
+              <div className="map-pin pin-3">C</div>
+              <div className="map-route" />
+              <div className="map-route route-2" />
+              <div className="map-overlay">
+                <div>
+                  <span className="tiny-label">Recommended</span>
+                  <strong>{bestStation?.name}</strong>
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest">{CURRENT_USER.name}</p>
-                  <p className="text-[10px] text-muted-foreground font-bold">{CURRENT_USER.carModel}</p>
+                  <span className="tiny-label">ETA Total</span>
+                  <strong>{bestStation?.totalEffectiveTime} min</strong>
                 </div>
               </div>
-              <LogOut className="w-4 h-4 text-muted-foreground hover:text-destructive cursor-pointer" />
             </div>
-          </SidebarFooter>
-        </Sidebar>
+          </div>
 
-        <SidebarInset className="flex-1 flex flex-col bg-transparent relative">
-          {/* Header */}
-          <header className="h-20 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-between px-10 sticky top-0 z-40">
-            <div className="flex items-center space-x-6">
-              <SidebarTrigger className="text-white hover:bg-white/5" />
-              <div className="h-6 w-px bg-white/10" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">
-                Network Status: <span className="text-green-400">OPTIMAL</span>
-              </h2>
-            </div>
-            
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
-                <Gauge className="w-4 h-4 text-primary" />
-                <span className="text-xs font-black uppercase tracking-widest">Real-Time Sync</span>
+          <div className="panel glass recommendation-panel">
+            <div className="panel-head">
+              <div>
+                <p className="tiny-label">SMART RECOMMENDATION</p>
+                <h3>Fastest effective charging option</h3>
               </div>
-              <Settings className="w-5 h-5 text-muted-foreground hover:text-white cursor-pointer transition-colors" />
             </div>
-          </header>
 
-          <main className="flex-1 p-8 flex flex-col lg:flex-row gap-8 overflow-hidden">
-            {/* Control Sidebar */}
-            <div className="w-full lg:w-[480px] flex flex-col gap-6 order-2 lg:order-1">
-              {/* Charge Config Card */}
-              <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl space-y-8 shadow-xl">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-black font-headline uppercase tracking-widest flex items-center">
-                    <Zap className="w-5 h-5 mr-3 text-primary" />
-                    Power Sync
-                  </h3>
-                  <Badge variant="outline" className="border-primary/50 text-primary font-black uppercase text-[10px]">
-                    {isDemoMode ? 'SIMULATED DATA' : 'LIVE GRID'}
-                  </Badge>
-                </div>
-
-                <div className="space-y-8">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center px-1">
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Current Charge</span>
-                      <span className="text-2xl font-black text-primary font-headline">{currentBat}%</span>
-                    </div>
-                    <Slider 
-                      value={[currentBat]} 
-                      onValueChange={(v) => setCurrentBat(v[0])}
-                      max={100}
-                      className="py-4"
-                    />
+            {bestStation && (
+              <div className="recommend-card">
+                <div className="recommend-top">
+                  <div>
+                    <p className="tiny-label">Best match</p>
+                    <h4>{bestStation.name} · Port 02</h4>
                   </div>
+                  <span className={statusClass(bestStation.status)}>
+                    {bestStation.status === 'Free' ? 'Free Now' : bestStation.status}
+                  </span>
+                </div>
 
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center px-1">
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Target Threshold</span>
-                      <span className="text-2xl font-black text-accent font-headline">{targetBat}%</span>
-                    </div>
-                    <Slider 
-                      value={[targetBat]} 
-                      onValueChange={(v) => setTargetBat(Math.max(v[0], currentBat + 10))}
-                      min={currentBat}
-                      max={100}
-                      className="py-4"
-                    />
+                <div className="time-row">
+                  <div>
+                    <span className="tiny-label">Travel</span>
+                    <strong>{bestStation.travelTime} min</strong>
+                  </div>
+                  <div>
+                    <span className="tiny-label">Wait</span>
+                    <strong>{bestStation.waitTime} min</strong>
+                  </div>
+                  <div>
+                    <span className="tiny-label">Charge</span>
+                    <strong>{bestStation.chargeTime} min</strong>
+                  </div>
+                  <div>
+                    <span className="tiny-label">Total</span>
+                    <strong>{bestStation.totalEffectiveTime} min</strong>
                   </div>
                 </div>
+
+                <button className="glow-btn full">Reroute to this station</button>
               </div>
+            )}
 
-              {/* Station List */}
-              <div className="flex-1 flex flex-col min-h-0 space-y-4">
-                <div className="flex gap-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="SCANNING NEARBY HUBS..." 
-                      className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest placeholder:text-muted-foreground/50 focus:ring-primary/50" 
-                    />
-                  </div>
-                  <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl bg-white/5 border-white/10 hover:bg-white/10">
-                    <Filter className="w-4 h-4 text-white" />
-                  </Button>
-                </div>
+            <div className="terminal">
+              <div className="terminal-title">SYSTEM LOG</div>
+              <div className="log-line"><span>[OK]</span> Ranking engine initialized</div>
+              <div className="log-line"><span>[AI]</span> {bestStation?.name} identified as optimal</div>
+              <div className="log-line"><span>[ROUTE]</span> Travel time: {bestStation?.travelTime}m</div>
+              <div className="log-line"><span>[LIVE]</span> Queues refreshed in real time</div>
+            </div>
+          </div>
 
-                <ScrollArea className="flex-1">
-                  <div className="space-y-4 pb-10">
-                    {isLoading ? (
-                      <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Decoding grid telemetry...</p>
-                      </div>
-                    ) : (
-                      stations.map((st, idx) => (
-                        <StationCard 
-                          key={st.id} 
-                          station={st} 
-                          onSelect={setSelectedStation}
-                          isRecommended={idx === 0}
-                        />
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+          <div className="panel glass station-panel">
+            <div className="panel-head">
+              <div>
+                <p className="tiny-label">STATION STATUS</p>
+                <h3>Nearby port load</h3>
               </div>
             </div>
 
-            {/* Map & Recommendation Area */}
-            <div className="flex-1 flex flex-col gap-8 order-1 lg:order-2">
-              <div className="flex-1 relative">
-                <MapView 
-                  stations={stations}
-                  selectedStation={selectedStation || bestStation}
-                  onStationClick={setSelectedStation}
-                  userLocation={userLocation}
-                />
+            <div className="station-list">
+              {rankedStations.map((station) => (
+                <article key={station.id} className="station-card">
+                  <div className="station-top">
+                    <h4>{station.name}</h4>
+                    <span className={statusClass(station.status)}>{station.status}</span>
+                  </div>
+
+                  <div className="station-meta">
+                    <span>{station.distanceKm} km</span>
+                    <span>Wait {station.waitTime} min</span>
+                    <span>Charge {station.chargeTime} min</span>
+                  </div>
+
+                  <div className="station-total">
+                    <span className="tiny-label">Total effective time</span>
+                    <strong>{station.totalEffectiveTime} min</strong>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel glass control-panel">
+            <div className="panel-head">
+              <div>
+                <p className="tiny-label">CONTROL CONSOLE</p>
+                <h3>Charging and reroute operations</h3>
+              </div>
+            </div>
+
+            <div className="control-box">
+              <label>
+                Current battery
+                <input type="range" min="0" max="100" value={currentBattery} readOnly />
+              </label>
+
+              <div className="control-row">
+                <div className="mini-box">
+                  <span className="tiny-label">Current %</span>
+                  <strong>{currentBattery}%</strong>
+                </div>
+                <div className="mini-box">
+                  <span className="tiny-label">Target %</span>
+                  <strong>{targetBattery}%</strong>
+                </div>
               </div>
 
-              {/* Recommendation HUD */}
-              {bestStation && (
-                <div className="animate-in slide-in-from-bottom-8 duration-700">
-                  <RecommendationPanel 
-                    station={selectedStation || bestStation} 
-                    onBook={handleBooking} 
-                  />
+              <div className="progress-wrap">
+                <div className="progress-bar">
+                  <div className="progress-fill" />
                 </div>
-              )}
-            </div>
-          </main>
-        </SidebarInset>
+                <span className="tiny-label">Predicting charging duration</span>
+              </div>
 
-        <Toaster />
-      </div>
-    </SidebarProvider>
+              <button className="glow-btn full">Start Booking</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
   );
 }
