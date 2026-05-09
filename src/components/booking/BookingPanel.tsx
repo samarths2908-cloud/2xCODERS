@@ -1,13 +1,12 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Battery, Info, AlertCircle, RefreshCw } from 'lucide-react';
+import { Battery, Info, AlertCircle, Sparkles, BrainCircuit, Loader2 } from 'lucide-react';
 import { Station, User } from '@/lib/types';
 import { calculateChargingTime, estimateTravelTime } from '@/lib/utils/charging-calculator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -16,10 +15,12 @@ interface BookingPanelProps {
   user: User;
   stations: Station[];
   onBook: (station: Station, estimates: any) => void;
-  onSuggestionClick?: (explanation: string) => void;
+  onExplain?: (current: number, target: number) => void;
+  onPredict?: () => void;
+  isAiLoading?: boolean;
 }
 
-export const BookingPanel: React.FC<BookingPanelProps> = ({ user, stations, onBook }) => {
+export const BookingPanel: React.FC<BookingPanelProps> = ({ user, stations, onBook, onExplain, onPredict, isAiLoading }) => {
   const [currentBat, setCurrentBat] = useState(25);
   const [targetBat, setTargetBat] = useState(80);
   const [chargingMode, setChargingMode] = useState<'full' | 'custom'>('custom');
@@ -32,7 +33,7 @@ export const BookingPanel: React.FC<BookingPanelProps> = ({ user, stations, onBo
         currentBat, 
         chargingMode === 'full' ? 100 : targetBat, 
         user.batteryCapacityKWh, 
-        station.id === 'st-3' ? 250 : 150 // Mocking different power levels
+        station.id === 'st-3' ? 250 : 150 
       );
       const totalTime = travelTime + waitTime + chargeTime;
 
@@ -137,6 +138,29 @@ export const BookingPanel: React.FC<BookingPanelProps> = ({ user, stations, onBo
                 <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Charge</p>
                 <p className="text-lg font-headline font-bold text-accent">{bestStation.estimates.chargeTime}m</p>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-6">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-10 border-primary/20 hover:bg-primary/5 text-primary text-xs"
+                onClick={() => onExplain?.(currentBat, chargingMode === 'full' ? 100 : targetBat)}
+                disabled={isAiLoading}
+              >
+                {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Sparkles className="w-3 h-3 mr-2" />}
+                Why this station?
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-10 border-accent/20 hover:bg-accent/5 text-accent text-xs"
+                onClick={() => onPredict?.()}
+                disabled={isAiLoading}
+              >
+                {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <BrainCircuit className="w-3 h-3 mr-2" />}
+                Predict Queues
+              </Button>
             </div>
 
             <Alert className="bg-accent/10 border-accent/20 mb-6">
