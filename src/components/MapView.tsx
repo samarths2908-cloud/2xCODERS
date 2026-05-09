@@ -79,11 +79,12 @@ export default function MapView({
   }, [stations]);
 
   const bestStation = useMemo(() => stations.find((s) => s.id === bestStationId), [stations, bestStationId]);
-  const selectedStation = useMemo(() => stations.find((s) => s.id === selectedStationId), [stations, selectedStationId]);
-
+  
   // Route to best station
   const routePath = useMemo(() => {
     if (!bestStation) return [];
+    // In a real app, this would be a proper directions result. 
+    // Here we show a direct visual link from "current position" (approximated as map center) to station.
     return [center, bestStation.location];
   }, [center, bestStation]);
 
