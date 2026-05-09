@@ -1,166 +1,139 @@
-
+// src/app/page.tsx
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { demoStations } from "@/lib/mock-data";
-import { rankStationsByFastestOption, RankedStation } from "@/lib/charging";
-import { MapView } from "@/components/MapView";
-import { RecommendationPanel } from "@/components/RecommendationPanel";
-import { fetchNearbyStations } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import {
+  rankStationsByFastestOption,
+  type RankedStation,
+  type Station,
+} from "@/lib/charging";
+import { loadRealStations } from "@/lib/api";
+import MapView from "@/components/MapView";
+import RecommendationPanel from "@/components/RecommendationPanel";
 
-function statusClass(status: string) {
-  switch (status) {
-    case "Free":
-    case "Online":
-      return "status free";
-    case "Busy":
-      return "status busy";
-    case "Charging":
-      return "status charging";
-    case "Delayed":
-      return "status delayed";
-    default:
-      return "status";
-  }
-}
+type Mode = "demo" | "real";
+type Tab = "dashboard" | "map" | "queue" | "reroute" | "admin";
+
+const CURRENT_BATTERY = 34;
+const TARGET_BATTERY = 80;
 
 export default function Page() {
-  const { toast } = useToast();
+  const [mode, setMode] = useState<Mode>("demo");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [stations, setStations] = useState<Station[]>(demoStations);
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
+  const [demoTick, setDemoTick] = useState(0);
 
-  // Refs for navigation
-  const dashboardRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<HTMLDivElement>(null);
-  const queueRef = useRef<HTMLDivElement>(null);
-  const rerouteRef = useRef<HTMLDivElement>(null);
-  const adminRef = useRef<HTMLDivElement>(null);
+  const dashboardRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const queueRef = useRef<HTMLDivElement | null>(null);
+  const rerouteRef = useRef<HTMLDivElement | null>(null);
+  const adminRef = useRef<HTMLDivElement | null>(null);
 
-  // State
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [isRealMode, setIsRealMode] = useState(false);
-  const [stations, setStations] = useState(demoStations);
-  const [selectedStation, setSelectedStation] = useState<RankedStation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isBooking, setIsBooking] = useState(false);
-  const [logs, setLogs] = useState<string[]>([
-    "[OK] Ranking engine initialized",
-    "[MODE] System standby"
-  ]);
+  useEffect(() => {
+    if (mode !== "demo") return;
 
-  // Config
-  const currentBattery = 34;
-  const targetBattery = 80;
-  const userLocation = { latitude: 34.0522, longitude: -118.2437 };
+    const interval = setInterval(() => {
+      setDemoTick((tick) => tick + 1);
+    }, 2400);
 
-  // Scroll logic
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>, tab: string) => {
-    setActiveTab(tab);
-    if (ref.current) {
-      ref.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+    return () => clearInterval(interval);
+  }, [mode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStations() {
+      if (mode === "demo") {
+        const animated: Station[] = demoStations.map((station, index) => {
+          const bump = (demoTick + index) % 3 === 0 ? 1 : 0;
+
+          const status: Station["status"] =
+            (demoTick + index) % 4 === 0
+              ? "Free"
+              : (demoTick + index) % 4 === 1
+                ? "Busy"
+                : (demoTick + index) % 4 === 2
+                  ? "Charging"
+                  : "Delayed";
+
+          return {
+            ...station,
+            queueLength: Math.max(0, station.queueLength + bump),
+            availablePorts: Math.max(0, station.availablePorts - bump),
+            status,
+          };
+        });
+
+        if (!cancelled) {
+          setStations(animated);
+        }
+        return;
+      }
+
+      try {
+        const realStations = await loadRealStations(12.9716, 77.5946);
+        if (!cancelled && realStations.length > 0) {
+          setStations(realStations);
+        }
+      } catch {
+        if (!cancelled) {
+          setStations(demoStations);
+        }
+      }
     }
+
+    loadStations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, demoTick]);
+
+  const rankedStations: RankedStation[] = useMemo(() => {
+    return rankStationsByFastestOption(stations, CURRENT_BATTERY, TARGET_BATTERY);
+  }, [stations]);
+
+  const bestStation = rankedStations[0] ?? null;
+
+  const selectedStation =
+    rankedStations.find((station) => station.id === selectedStationId) ??
+    bestStation ??
+    null;
+
+  const scrollToSection = (
+    ref: React.RefObject<HTMLDivElement | null>,
+    tab: Tab
+  ) => {
+    setActiveTab(tab);
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // Demo Simulation Logic
-  useEffect(() => {
-    if (!isRealMode) {
-      const interval = setInterval(() => {
-        setStations(prev => prev.map(s => ({
-          ...s,
-          queueLength: Math.max(0, s.queueLength + (Math.random() > 0.5 ? 1 : -1)),
-          availablePorts: Math.max(0, Math.min(6, s.availablePorts + (Math.random() > 0.7 ? 1 : -1)))
-        })));
-        
-        const newLog = `[LIVE] Traffic update for ${demoStations[Math.floor(Math.random() * demoStations.length)].name}`;
-        setLogs(prev => [newLog, ...prev.slice(0, 4)]);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [isRealMode]);
-
-  // Real Mode Data Fetching
-  useEffect(() => {
-    if (isRealMode) {
-      setIsLoading(true);
-      fetchNearbyStations(userLocation.latitude, userLocation.longitude)
-        .then((data) => {
-          const mappedStations = data.map((item: any) => ({
-            id: item.ID.toString(),
-            name: item.AddressInfo.Title,
-            distanceKm: item.AddressInfo.Distance || 2.5,
-            queueLength: Math.floor(Math.random() * 3),
-            avgSessionMinutes: 20,
-            chargerKW: item.Connections?.[0]?.PowerKW || 120,
-            batteryCapacityKWh: 75,
-            availablePorts: Math.floor(Math.random() * 4),
-            status: Math.random() > 0.3 ? "Free" : "Busy",
-            location: {
-              latitude: item.AddressInfo.Latitude,
-              longitude: item.AddressInfo.Longitude
-            }
-          }));
-          setStations(mappedStations);
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setStations(demoStations);
-    }
-  }, [isRealMode]);
-
-  // Ranking
-  const rankedStations = useMemo(() => {
-    return rankStationsByFastestOption(stations, currentBattery, targetBattery);
-  }, [stations, currentBattery, targetBattery]);
-
-  const bestStation = rankedStations[0];
-
-  // Sync selected station
-  useEffect(() => {
-    if (!selectedStation && bestStation) {
-      setSelectedStation(bestStation);
-    }
-  }, [bestStation, selectedStation]);
-
-  const handleReroute = () => {
-    if (bestStation) {
-      setSelectedStation(bestStation);
-      scrollToSection(mapRef, "map");
-      toast({
-        title: "Reroute Successful",
-        description: `Navigation set to ${bestStation.name}`,
-      });
-    }
+  const handleReroute = (station: RankedStation) => {
+    setSelectedStationId(station.id);
+    setActiveTab("reroute");
+    rerouteRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleStartBooking = () => {
-    setIsBooking(true);
-    setSelectedStation(bestStation);
-    scrollToSection(rerouteRef, "reroute");
-    toast({
-      title: "Reserving Port",
-      description: `Connecting to ${bestStation?.name} network...`,
-    });
-    setTimeout(() => {
-        setIsBooking(false);
-        toast({
-            title: "Booking Confirmed",
-            description: "Station Alpha: Port P-4 reserved for 15 minutes.",
-        });
-    }, 2000);
+    if (!bestStation) return;
+    setSelectedStationId(bestStation.id);
+    setActiveTab("reroute");
+    rerouteRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
     <main className="page-shell">
-      {/* Background elements with pointer-events-none */}
-      <div className="bg-particles pointer-events-none" aria-hidden="true">
-        <span /><span /><span /><span /><span /><span /><span /><span /><span /><span />
+      <div className="bg-particles" aria-hidden="true">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <span key={i} />
+        ))}
       </div>
 
-      <div className="bg-orb orb-1 pointer-events-none" aria-hidden="true" />
-      <div className="bg-orb orb-2 pointer-events-none" aria-hidden="true" />
-      <div className="bg-grid pointer-events-none" aria-hidden="true" />
+      <div className="bg-orb orb-1" aria-hidden="true" />
+      <div className="bg-orb orb-2" aria-hidden="true" />
+      <div className="bg-grid" aria-hidden="true" />
 
       <aside className="sidebar glass">
         <div>
@@ -172,33 +145,33 @@ export default function Page() {
         </div>
 
         <nav className="side-nav">
-          <button 
-            className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => scrollToSection(dashboardRef, 'dashboard')}
+          <button
+            className={`nav-btn ${activeTab === "dashboard" ? "active" : ""}`}
+            onClick={() => scrollToSection(dashboardRef, "dashboard")}
           >
             Dashboard
           </button>
-          <button 
-            className={`nav-btn ${activeTab === 'map' ? 'active' : ''}`}
-            onClick={() => scrollToSection(mapRef, 'map')}
+          <button
+            className={`nav-btn ${activeTab === "map" ? "active" : ""}`}
+            onClick={() => scrollToSection(mapRef, "map")}
           >
             Map
           </button>
-          <button 
-            className={`nav-btn ${activeTab === 'queue' ? 'active' : ''}`}
-            onClick={() => scrollToSection(queueRef, 'queue')}
+          <button
+            className={`nav-btn ${activeTab === "queue" ? "active" : ""}`}
+            onClick={() => scrollToSection(queueRef, "queue")}
           >
             Queue
           </button>
-          <button 
-            className={`nav-btn ${activeTab === 'reroute' ? 'active' : ''}`}
-            onClick={() => scrollToSection(rerouteRef, 'reroute')}
+          <button
+            className={`nav-btn ${activeTab === "reroute" ? "active" : ""}`}
+            onClick={() => scrollToSection(rerouteRef, "reroute")}
           >
             Reroute
           </button>
-          <button 
-            className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
-            onClick={() => window.location.href = '/admin'}
+          <button
+            className={`nav-btn ${activeTab === "admin" ? "active" : ""}`}
+            onClick={() => scrollToSection(adminRef, "admin")}
           >
             Admin
           </button>
@@ -207,15 +180,15 @@ export default function Page() {
         <div className="side-footer">
           <div className="tiny-label">Mode</div>
           <div className="mode-switch">
-            <button 
-              className={`mode ${!isRealMode ? 'active' : ''}`}
-              onClick={() => setIsRealMode(false)}
+            <button
+              className={`mode ${mode === "demo" ? "active" : ""}`}
+              onClick={() => setMode("demo")}
             >
               Demo
             </button>
-            <button 
-              className={`mode ${isRealMode ? 'active' : ''}`}
-              onClick={() => setIsRealMode(true)}
+            <button
+              className={`mode ${mode === "real" ? "active" : ""}`}
+              onClick={() => setMode("real")}
             >
               Real
             </button>
@@ -225,56 +198,65 @@ export default function Page() {
 
       <section className="content">
         <header className="hero glass" ref={dashboardRef}>
-          <div className="z-10 relative">
+          <div>
             <p className="eyebrow">EV CHARGING INTELLIGENCE SYSTEM</p>
-            <h2>{isLoading ? "Fetching Live Data..." : "Fastest station. Lowest wait."}</h2>
+            <h2>Fastest station. Lowest wait. Smart reroute.</h2>
             <p className="hero-sub">
-              Compare travel time, queue time, and charging time in real time to guide every vehicle to the best available charger.
+              Compare travel time, queue time, and charging time in real time
+              to guide every vehicle to the best available charger.
             </p>
           </div>
 
-          <div className="hero-stats relative z-10">
+          <div className="hero-stats">
             <div className="stat-card">
               <span className="tiny-label">Best station</span>
-              <strong>{bestStation?.name || "Searching..."}</strong>
-              <small>{bestStation?.totalEffectiveTime || 0} min total</small>
+              <strong>{bestStation?.name ?? "No station"}</strong>
+              <small>
+                {bestStation ? `${bestStation.totalEffectiveTime} min total` : "-"}
+              </small>
             </div>
+
             <div className="stat-card">
-              <span className="tiny-label">Queue wait</span>
-              <strong>{bestStation?.waitTime || 0} Min</strong>
-              <small>Live update</small>
+              <span className="tiny-label">Current queue</span>
+              <strong>
+                {rankedStations.reduce((sum, station) => sum + station.queueLength, 0)}{" "}
+                Vehicles
+              </strong>
+              <small>{mode === "demo" ? "Demo live" : "Real live"}</small>
             </div>
+
             <div className="stat-card">
               <span className="tiny-label">Free ports</span>
-              <strong>0{bestStation?.availablePorts || 0} Ports</strong>
-              <small>Ready now</small>
+              <strong>
+                {rankedStations.reduce((sum, station) => sum + station.availablePorts, 0)}{" "}
+                Ports
+              </strong>
+              <small>{mode === "demo" ? "Demo mode" : "Real mode"}</small>
             </div>
           </div>
         </header>
 
         <section className="grid-layout">
-          <div className={`panel glass map-panel ${activeTab === 'map' ? 'ring-2 ring-primary/50' : ''}`} ref={mapRef}>
+          <div className="panel glass map-panel" ref={mapRef}>
             <div className="panel-head">
               <div>
                 <p className="tiny-label">LIVE MAP</p>
                 <h3>Station availability and reroute view</h3>
               </div>
-              <button 
+              <button
                 className="glow-btn"
-                onClick={() => setSelectedStation(bestStation)}
+                onClick={() => scrollToSection(rerouteRef, "reroute")}
               >
-                Focus Optimal
+                Instant Switch
               </button>
             </div>
 
-            <div className="map-fake" style={{ minHeight: '430px', position: 'relative' }}>
-               <MapView 
-                  stations={rankedStations} 
-                  selectedStation={selectedStation} 
-                  onStationClick={(st) => setSelectedStation(st as RankedStation)}
-                  userLocation={userLocation}
-               />
-            </div>
+            <MapView
+              stations={rankedStations}
+              bestStationId={bestStation?.id ?? null}
+              selectedStationId={selectedStation?.id ?? null}
+              mode={mode}
+            />
           </div>
 
           <div className="panel glass recommendation-panel" ref={rerouteRef}>
@@ -285,54 +267,33 @@ export default function Page() {
               </div>
             </div>
 
-            {selectedStation && (
-              <div className="recommend-card">
-                <div className="recommend-top">
-                  <div>
-                    <p className="tiny-label">Currently Evaluated</p>
-                    <h4>{selectedStation.name}</h4>
-                  </div>
-                  <span className={statusClass(selectedStation.status)}>
-                    {selectedStation.status === 'Free' ? 'Free Now' : selectedStation.status}
-                  </span>
-                </div>
-
-                <div className="time-row">
-                  <div>
-                    <span className="tiny-label">Travel</span>
-                    <strong>{selectedStation.travelTime} min</strong>
-                  </div>
-                  <div>
-                    <span className="tiny-label">Wait</span>
-                    <strong>{selectedStation.waitTime} min</strong>
-                  </div>
-                  <div>
-                    <span className="tiny-label">Charge</span>
-                    <strong>{selectedStation.chargeTime} min</strong>
-                  </div>
-                  <div>
-                    <span className="tiny-label">Total</span>
-                    <strong>{selectedStation.totalEffectiveTime} min</strong>
-                  </div>
-                </div>
-
-                <button 
-                  className="glow-btn full"
-                  onClick={handleReroute}
-                >
-                  Reroute to this station
-                </button>
-              </div>
+            {selectedStation && bestStation && (
+              <RecommendationPanel
+                station={selectedStation}
+                bestStation={bestStation}
+                onReroute={handleReroute}
+              />
             )}
 
             <div className="terminal">
               <div className="terminal-title">SYSTEM LOG</div>
-              {logs.map((log, i) => (
-                <div key={i} className="log-line">
-                  <span>[{i === 0 ? "LIVE" : "OK"}]</span> {log}
-                </div>
-              ))}
+              <div className="log-line">
+                <span>[OK]</span> Ranking engine initialized
+              </div>
+              <div className="log-line">
+                <span>[MODE]</span> Switched to {mode} mode
+              </div>
+              <div className="log-line">
+                <span>[AI]</span> {bestStation?.name ?? "No station"} identified as optimal
+              </div>
+              <div className="log-line">
+                <span>[LIVE]</span> Queues refreshed in real time
+              </div>
             </div>
+
+            <button className="glow-btn full" onClick={handleStartBooking}>
+              Start Booking
+            </button>
           </div>
 
           <div className="panel glass station-panel" ref={queueRef}>
@@ -345,14 +306,12 @@ export default function Page() {
 
             <div className="station-list">
               {rankedStations.map((station) => (
-                <article 
-                  key={station.id} 
-                  className={`station-card cursor-pointer ${selectedStation?.id === station.id ? 'ring-1 ring-primary/50 border-primary/30' : ''}`}
-                  onClick={() => setSelectedStation(station)}
-                >
+                <article key={station.id} className="station-card">
                   <div className="station-top">
                     <h4>{station.name}</h4>
-                    <span className={statusClass(station.status)}>{station.status}</span>
+                    <span className={`status ${station.status.toLowerCase()}`}>
+                      {station.status}
+                    </span>
                   </div>
 
                   <div className="station-meta">
@@ -365,12 +324,16 @@ export default function Page() {
                     <span className="tiny-label">Total effective time</span>
                     <strong>{station.totalEffectiveTime} min</strong>
                   </div>
+
+                  <button className="glow-btn full" onClick={() => handleReroute(station)}>
+                    Reroute to this station
+                  </button>
                 </article>
               ))}
             </div>
           </div>
 
-          <div className="panel glass control-panel">
+          <div className="panel glass control-panel" ref={adminRef}>
             <div className="panel-head">
               <div>
                 <p className="tiny-label">CONTROL CONSOLE</p>
@@ -379,47 +342,51 @@ export default function Page() {
             </div>
 
             <div className="control-box">
-              <label className="text-sm flex flex-col gap-2">
+              <label>
                 Current battery
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  value={currentBattery} 
-                  readOnly 
-                  className="cursor-not-allowed opacity-50"
-                />
+                <input type="range" min="0" max="100" defaultValue={CURRENT_BATTERY} />
               </label>
 
               <div className="control-row">
                 <div className="mini-box">
                   <span className="tiny-label">Current %</span>
-                  <strong>{currentBattery}%</strong>
+                  <strong>{CURRENT_BATTERY}%</strong>
                 </div>
                 <div className="mini-box">
                   <span className="tiny-label">Target %</span>
-                  <strong>{targetBattery}%</strong>
+                  <strong>{TARGET_BATTERY}%</strong>
                 </div>
               </div>
 
               <div className="progress-wrap">
                 <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${isBooking ? 100 : currentBattery}%`, transition: 'width 2s ease-in-out' }} />
+                  <div className="progress-fill" />
                 </div>
-                <span className="tiny-label mt-2 block">
-                    {isBooking ? "Syncing Port..." : `Estimated session: ${bestStation?.chargeTime || 0}m`}
+                <span className="tiny-label">
+                  Estimated session: {bestStation?.chargeTime ?? 0} min
                 </span>
               </div>
 
-              <button 
-                className={`glow-btn full ${isBooking ? 'opacity-50 animate-pulse' : ''}`}
-                onClick={handleStartBooking}
-                disabled={isBooking}
-              >
-                {isBooking ? "Booking..." : "Start Booking"}
+              <button className="glow-btn full" onClick={handleStartBooking}>
+                Start Booking
               </button>
             </div>
           </div>
+        </section>
+
+        <section ref={queueRef} className="panel glass" style={{ marginTop: 20 }}>
+          <div className="panel-head">
+            <div>
+              <p className="tiny-label">QUEUE VIEW</p>
+              <h3>Live waiting list</h3>
+            </div>
+          </div>
+
+          <p className="hero-sub">
+            {mode === "demo"
+              ? "Demo queue is active and changes automatically."
+              : "Real queue mode is active and will refresh from live station data."}
+          </p>
         </section>
       </section>
     </main>

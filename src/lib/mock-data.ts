@@ -1,6 +1,17 @@
-import { Station } from "./charging";
+import type { Station } from "./charging";
 
 export const demoStations: Station[] = [
+  {
+    id: "station-pulse",
+    name: "Station Pulse",
+    distanceKm: 0.9,
+    queueLength: 0,
+    avgSessionMinutes: 12,
+    chargerKW: 180,
+    batteryCapacityKWh: 75,
+    availablePorts: 3,
+    status: "Free",
+  },
   {
     id: "station-alpha",
     name: "Station Alpha",
@@ -26,7 +37,7 @@ export const demoStations: Station[] = [
   {
     id: "station-volt",
     name: "Station Volt",
-    distanceKm: 0.9,
+    distanceKm: 3.8,
     queueLength: 1,
     avgSessionMinutes: 20,
     chargerKW: 60,
@@ -34,15 +45,6 @@ export const demoStations: Station[] = [
     availablePorts: 1,
     status: "Charging",
   },
-  {
-    id: "station-pulse",
-    name: "Station Pulse",
-    distanceKm: 3.8,
-    queueLength: 0,
-    avgSessionMinutes: 12,
-    chargerKW: 180,
-    batteryCapacityKWh: 75,
-    availablePorts: 3,
-    status: "Free",
-  },
 ];
+
+export const MOCK_STATIONS = demoStations;

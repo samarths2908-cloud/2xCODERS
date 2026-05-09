@@ -1,145 +1,63 @@
-
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { RankedStation } from '@/lib/charging';
-import { MapPin, Navigation, Crosshair } from 'lucide-react';
+import React from "react";
+import type { RankedStation } from "@/lib/charging";
 
-interface MapViewProps {
+export default function MapView({
+  stations,
+  bestStationId,
+  selectedStationId,
+  mode,
+}: {
   stations: RankedStation[];
-  selectedStation: RankedStation | null;
-  onStationClick: (station: RankedStation) => void;
-  userLocation: { latitude: number; longitude: number };
-}
-
-export const MapView: React.FC<MapViewProps> = ({ 
-  stations, 
-  selectedStation, 
-  onStationClick,
-  userLocation 
-}) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [radarPulse, setRadarPulse] = useState(0);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 800);
-    const interval = setInterval(() => setRadarPulse(p => (p + 1) % 100), 2000);
-    return () => {
-        clearTimeout(timer);
-        clearInterval(interval);
-    };
-  }, []);
-
-  if (!isLoaded) {
-    return (
-      <div className="w-full h-full bg-black/40 animate-pulse flex items-center justify-center rounded-2xl border border-white/5">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto border border-primary/30">
-            <Navigation className="w-6 h-6 text-primary animate-bounce" />
-          </div>
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground">Initializing HUD...</p>
-        </div>
-      </div>
-    );
-  }
+  bestStationId: string | null;
+  selectedStationId: string | null;
+  mode: "demo" | "real";
+}) {
+  const topStations = stations.slice(0, 4);
 
   return (
-    <div className="relative w-full h-full bg-[#050505]/80 rounded-2xl overflow-hidden shadow-2xl border border-white/10" style={{ minHeight: '430px' }}>
-      {/* Grid Pattern */}
-      <div 
-        className="absolute inset-0 opacity-10 pointer-events-none"
-        style={{
-          backgroundImage: 'linear-gradient(#444 1px, transparent 1px), linear-gradient(90deg, #444 1px, transparent 1px)',
-          backgroundSize: '40px 40px'
-        }}
-      />
-      
-      {/* HUD Elements */}
-      <div className="absolute top-4 left-4 z-20 pointer-events-none">
-        <div className="bg-black/80 backdrop-blur-md border border-white/10 p-2 rounded-lg flex items-center space-x-3">
-          <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-white/70">RADAR ACTIVE</span>
-        </div>
-      </div>
+    <div className="map-fake">
+      <div className="map-grid" aria-hidden="true" />
+      <div className="map-radar" aria-hidden="true" />
 
-      {/* Radar Pulse Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
-          <div className="w-[400px] h-[400px] border border-primary/5 rounded-full scale-[0.5] opacity-50" />
-          <div className="w-[600px] h-[600px] border border-primary/5 rounded-full scale-[0.3] opacity-30" />
-      </div>
-
-      {/* User Location Marker (Center) */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
-        <div className="relative">
-          <div className="absolute inset-0 w-12 h-12 bg-primary/20 rounded-full animate-ping" />
-          <div className="relative bg-black/60 p-2 rounded-full border border-primary/50 shadow-[0_0_15px_rgba(73,217,255,0.4)]">
-            <Crosshair className="w-5 h-5 text-primary" />
-          </div>
-        </div>
-      </div>
-
-      {/* Station Pins */}
-      {stations.map((station, idx) => {
-        const isSelected = selectedStation?.id === station.id;
-        
-        // Mock positions for the visual demo relative to center
-        // In a real HUD we'd use local coords
-        const top = 50 + (idx === 0 ? -25 : idx === 1 ? 18 : idx === 2 ? -12 : 30);
-        const left = 50 + (idx === 0 ? 30 : idx === 1 ? -22 : idx === 2 ? -35 : 20);
+      {topStations.map((station, index) => {
+        const left = `${18 + index * 18}%`;
+        const top = `${22 + (index % 2) * 22}%`;
+        const isBest = station.id === bestStationId;
+        const isSelected = station.id === selectedStationId;
 
         return (
-          <div 
+          <div
             key={station.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              onStationClick(station);
-            }}
-            className={`absolute cursor-pointer transition-all duration-500 group/pin ${isSelected ? 'scale-125 z-30' : 'hover:scale-110 z-20'}`}
-            style={{ top: `${top}%`, left: `${left}%`, transform: 'translate(-50%, -50%)' }}
+            className={`map-pin pin-${index + 1} ${isBest ? "best" : ""} ${
+              isSelected ? "selected" : ""
+            }`}
+            style={{ left, top }}
+            title={station.name}
           >
-            <div className="flex flex-col items-center">
-              <div className={`mb-2 px-3 py-1 rounded-full border backdrop-blur-md transition-all ${
-                isSelected ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(73,217,255,0.4)]' : 'bg-black/60 border-white/10 text-white/70'
-              }`}>
-                <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">{station.name}</span>
-                {station.availablePorts > 0 && !isSelected && <span className="ml-2 text-green-400 font-bold">{station.availablePorts}P</span>}
-              </div>
-              <div className={`p-2 rounded-full transition-all border ${
-                isSelected ? 'bg-white text-primary border-primary' : 'bg-black/80 text-white border-white/20'
-              }`}>
-                <MapPin className="w-4 h-4" />
-              </div>
-            </div>
+            <span>{station.name.replace("Station ", "").slice(0, 2)}</span>
           </div>
         );
       })}
 
-      {/* Reroute Path Line - Dynamic to selected station */}
-      {selectedStation && (
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-          <path 
-            d="M50,50 Q60,40 75,30" 
-            stroke="rgba(73, 217, 255, 0.6)" 
-            strokeWidth="2" 
-            fill="none" 
-            strokeDasharray="10,5"
-            className="animate-[dash_3s_linear_infinite]"
-          />
-        </svg>
-      )}
+      <div className="map-route" />
+      <div className="map-route route-2" />
 
-      {/* Zoom Controls */}
-      <div className="absolute bottom-4 right-4 flex flex-col space-y-2 z-20">
-        <button className="bg-black/80 hover:bg-primary/20 border border-white/10 text-white p-2 rounded-xl backdrop-blur-md transition-colors shadow-xl">
-          <Navigation className="w-4 h-4" />
-        </button>
+      <div className="map-overlay">
+        <div>
+          <span className="tiny-label">Mode</span>
+          <strong>{mode === "demo" ? "Demo" : "Real"}</strong>
+        </div>
+        <div>
+          <span className="tiny-label">Best</span>
+          <strong>{stations[0]?.name ?? "—"}</strong>
+        </div>
+        <div>
+          <span className="tiny-label">ETA</span>
+          <strong>{stations[0]?.totalEffectiveTime ?? "—"} min</strong>
+        </div>
       </div>
-
-      <style jsx>{`
-        @keyframes dash {
-          to { stroke-dashoffset: -30; }
-        }
-      `}</style>
     </div>
   );
-};
+}
