@@ -1,51 +1,41 @@
-export type PortStatus = 'Free' | 'Busy' | 'Charging' | 'Delayed';
+export type StationStatus = 'Free' | 'Busy' | 'Charging' | 'Delayed';
 
 export interface Location {
-  latitude: number;
-  longitude: number;
-}
-
-export interface Port {
-  id: string;
-  stationId: string;
-  status: PortStatus;
-  type: 'Level 2' | 'DC Fast';
-  powerKW: number;
+  lat: number;
+  lng: number;
 }
 
 export interface Station {
   id: string;
   name: string;
+  city?: string;
+  state?: string;
   location: Location;
   totalPorts: number;
   availablePorts: number;
-  averageWaitMinutes: number;
-  status: 'Online' | 'Offline' | 'Busy';
-  updatedAt: string;
-  congestionLevel: number; // 0 to 1
-  pricePerKWh: number;
+  avgSessionMinutes: number;
+  chargerKW: number;
+  batteryCapacityKWh: number;
+  queueLength: number;
+  status: StationStatus;
+  operator?: string;
+  connectorType?: string;
+  distanceKm: number;
 }
 
-export interface Booking {
-  id: string;
-  userId: string;
-  stationId: string;
-  portId: string;
-  currentBattery: number;
-  targetBattery: number;
+export interface RankedStation extends Station {
   travelMinutes: number;
   waitMinutes: number;
   chargeMinutes: number;
-  totalEstimatedMinutes: number;
-  status: 'Upcoming' | 'Active' | 'Completed' | 'Cancelled';
-  bookedAt: string;
+  totalEffectiveMinutes: number;
+  score: number;
 }
 
 export interface User {
   uid: string;
   name: string;
-  email: string;
-  role: 'driver' | 'admin';
   carModel: string;
   batteryCapacityKWh: number;
+  currentBattery: number;
+  targetBattery: number;
 }

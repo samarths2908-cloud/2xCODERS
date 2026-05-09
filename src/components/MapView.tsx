@@ -1,155 +1,116 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
+import React, { useEffect, useMemo } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { RankedStation } from "@/lib/charging";
+import { RankedStation } from "@/lib/types";
 
-// Dynamically import Leaflet components to prevent SSR issues
-const MapContainer = dynamic(() => import("react-leaflet").then((mod) => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import("react-leaflet").then((mod) => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import("react-leaflet").then((mod) => mod.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), { ssr: false });
-const Polyline = dynamic(() => import("react-leaflet").then((mod) => mod.Polyline), { ssr: false });
-const Tooltip = dynamic(() => import("react-leaflet").then((mod) => mod.Tooltip), { ssr: false });
+// Fix Leaflet icon issue
+const fixLeafletIcons = () => {
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  });
+};
 
-interface MapViewProps {
+const RecenterMap = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+};
+
+interface Props {
   stations: RankedStation[];
-  bestStationId?: string | null;
-  selectedStationId?: string | null;
-  mode?: "demo" | "real";
+  bestStationId: string | null;
+  selectedStationId: string | null;
+  mode: "demo" | "real";
+  onStationSelect: (id: string) => void;
 }
 
-export default function MapView({
-  stations,
-  bestStationId,
-  selectedStationId,
-  mode = "demo",
-}: MapViewProps) {
-  const [isMounted, setIsMounted] = useState(false);
-  const [L, setL] = useState<any>(null);
-
+export default function MapView({ 
+  stations, 
+  bestStationId, 
+  selectedStationId, 
+  mode,
+  onStationSelect 
+}: Props) {
   useEffect(() => {
-    setIsMounted(true);
-    import("leaflet").then((leaflet) => {
-      setL(leaflet);
-      // Fix Leaflet's default icon path issues
-      delete (leaflet.Icon.Default.prototype as any)._getIconUrl;
-      leaflet.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      });
-    });
+    fixLeafletIcons();
   }, []);
 
-  if (!isMounted || !L) {
-    return (
-      <div className="relative h-[430px] w-full rounded-3xl border border-white/10 bg-[#07090f] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-20" />
-        <div className="text-cyan-400/50 animate-pulse font-headline tracking-widest text-xs z-10">
-          SYNCHRONIZING GEOSPATIAL UPLINK...
-        </div>
-      </div>
-    );
-  }
-
-  const center: [number, number] = stations.length > 0 
-    ? [stations[0].location.lat, stations[0].location.lng] 
-    : [12.9716, 77.5946];
+  const center = useMemo<[number, number]>(() => {
+    if (stations.length === 0) return [37.7749, -122.4194];
+    const lat = stations.reduce((acc, s) => acc + s.location.lat, 0) / stations.length;
+    const lng = stations.reduce((acc, s) => acc + s.location.lng, 0) / stations.length;
+    return [lat, lng];
+  }, [stations]);
 
   const bestStation = stations.find(s => s.id === bestStationId);
 
-  // Custom Neon Icon Generator
-  const createNeonIcon = (color: string, isHighlighted: boolean) => {
-    const size = isHighlighted ? 28 : 20;
-    return L.divIcon({
-      className: "custom-neon-marker",
-      html: `
-        <div style="
-          width: ${size}px;
-          height: ${size}px;
-          background-color: ${color};
-          border: 2px solid #fff;
-          border-radius: 50%;
-          box-shadow: 0 0 ${isHighlighted ? '25px' : '12px'} ${color}, inset 0 0 5px rgba(255,255,255,0.8);
-          transform: translate(-10%, -10%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
-          ${isHighlighted ? '<div class="w-2 h-2 bg-white rounded-full animate-ping"></div>' : ''}
-        </div>
-      `,
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
-    });
-  };
-
   return (
-    <div className="relative h-[430px] w-full rounded-3xl overflow-hidden border border-white/10 glass shadow-2xl isolate">
-      <MapContainer 
-        center={center} 
-        zoom={13} 
-        style={{ height: "100%", width: "100%", zIndex: 1 }} 
-        scrollWheelZoom={true}
+    <div className="relative w-full h-[430px] rounded-3xl overflow-hidden border border-white/10 glass shadow-2xl">
+      <div className="absolute top-4 left-4 z-[1000] pointer-events-none">
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl">
+          <p className="text-[10px] text-cyan-400 font-bold tracking-widest uppercase">Tactical Overlay</p>
+          <p className="text-white text-sm font-bold">Sector: {mode.toUpperCase()}</p>
+        </div>
+      </div>
+
+      <MapContainer
+        center={center}
+        zoom={13}
+        style={{ height: "100%", width: "100%", background: "#0a0a0a" }}
         zoomControl={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
+        
+        <RecenterMap center={center} />
 
-        {stations.map((station) => {
-          const isBest = station.id === bestStationId;
-          const isSelected = station.id === selectedStationId;
+        {stations.map((s) => {
+          const isBest = s.id === bestStationId;
+          const isSelected = s.id === selectedStationId;
           
-          // Color coding: Green for Best, Cyan for Selected, Purple for others
-          const color = isBest ? "#22c55e" : isSelected ? "#06b6d4" : "#a855f7";
-          
+          const icon = L.divIcon({
+            className: "custom-marker",
+            html: `
+              <div class="relative flex items-center justify-center">
+                <div class="absolute w-8 h-8 rounded-full animate-ping opacity-20 ${isBest ? 'bg-green-500' : isSelected ? 'bg-cyan-500' : 'bg-white'}"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-white shadow-lg ${isBest ? 'bg-green-500' : isSelected ? 'bg-cyan-400' : 'bg-slate-400'}"></div>
+              </div>
+            `,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          });
+
           return (
             <Marker 
-              key={station.id} 
-              position={[station.location.lat, station.location.lng]}
-              icon={createNeonIcon(color, isBest || isSelected)}
+              key={s.id} 
+              position={[s.location.lat, s.location.lng]} 
+              icon={icon}
+              eventHandlers={{ click: () => onStationSelect(s.id) }}
             >
-              <Popup className="cyberpunk-popup">
-                <div className="p-2 font-body text-slate-900 min-w-[200px]">
-                  <h4 className="font-bold border-b border-slate-200 pb-1 mb-2 text-primary uppercase tracking-tight">
-                    {station.name}
-                  </h4>
-                  <div className="space-y-1 text-[11px]">
-                    <p className="flex justify-between">
-                      <span className="font-semibold text-slate-500 uppercase">Status:</span> 
-                      <span className={station.status === 'Free' ? 'text-green-600 font-bold' : 'text-amber-600 font-bold'}>
-                        {station.status}
-                      </span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="font-semibold text-slate-500 uppercase">Ports:</span> 
-                      <span className="font-mono">{station.availablePorts} / {station.totalPorts} Available</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="font-semibold text-slate-500 uppercase">Queue:</span> 
-                      <span className="font-mono text-amber-600">{station.queueLength} vehicles</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="font-semibold text-slate-500 uppercase">Total ETA:</span> 
-                      <span className="font-black text-primary">{station.totalEffectiveTime} MIN</span>
-                    </p>
-                    <div className="pt-2 mt-2 border-t border-slate-100 flex justify-center">
-                       <span className="text-[10px] bg-primary/10 text-primary px-3 py-1 rounded-full font-bold uppercase tracking-widest">
-                        {station.chargerKW}kW Charging
-                      </span>
-                    </div>
+              <Popup className="cyber-popup">
+                <div className="p-2 min-w-[200px]">
+                  <h4 className="font-bold text-lg mb-1">{s.name}</h4>
+                  <div className="grid grid-cols-2 gap-2 text-xs opacity-80">
+                    <div>Ports: <span className="text-white font-bold">{s.availablePorts}/{s.totalPorts}</span></div>
+                    <div>Wait: <span className="text-white font-bold">{s.waitMinutes}m</span></div>
+                    <div>Power: <span className="text-white font-bold">{s.chargerKW}kW</span></div>
+                    <div>ETA: <span className="text-white font-bold">{s.travelMinutes}m</span></div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-white/10 text-[10px] uppercase font-bold text-cyan-400">
+                    Status: {s.status}
                   </div>
                 </div>
               </Popup>
-              <Tooltip direction="top" offset={[0, -15]} opacity={0.9} permanent={isBest || isSelected}>
-                <span className="font-bold text-[10px] uppercase tracking-wider bg-black/80 text-white px-2 py-0.5 rounded border border-white/20 backdrop-blur-sm">
-                   {isBest ? '⚡ OPTIMAL: ' : ''}{station.name}
-                </span>
-              </Tooltip>
             </Marker>
           );
         })}
@@ -157,69 +118,17 @@ export default function MapView({
         {bestStation && (
           <Polyline 
             positions={[center, [bestStation.location.lat, bestStation.location.lng]]}
-            pathOptions={{ 
-              color: '#22c55e', 
-              weight: 2, 
-              dashArray: '8, 12', 
-              opacity: 0.7,
-              className: 'animate-pulse'
-            }}
+            pathOptions={{ color: '#22c55e', weight: 2, dashArray: '10, 10', opacity: 0.6 }}
           />
         )}
       </MapContainer>
 
-      {/* Map HUD Overlays - Positioned absolutely over the MapContainer */}
-      <div className="absolute top-4 left-4 z-[500] pointer-events-none">
-        <div className="glass p-3 rounded-2xl border border-white/10 backdrop-blur-md bg-black/40 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-          <p className="tiny-label text-cyan-400 mb-1">Tactical Grid</p>
-          <div className="flex items-center space-x-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            <p className="text-[10px] text-white/70 uppercase tracking-widest font-mono">
-              {mode === 'demo' ? 'SIM_LINK: ACTIVE' : 'REAL_TIME: SAT_FEED'}
-            </p>
-          </div>
+      <div className="absolute bottom-4 right-4 z-[1000] pointer-events-none">
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-right">
+          <p className="text-[10px] text-white/40 font-bold uppercase">Uplink Active</p>
+          <p className="text-xs text-green-400 font-mono">LAT: {center[0].toFixed(4)} LNG: {center[1].toFixed(4)}</p>
         </div>
       </div>
-
-      <div className="absolute top-4 right-4 z-[500] pointer-events-none text-right">
-        <div className="glass p-3 rounded-2xl border border-white/10 backdrop-blur-md bg-black/40 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-          <p className="tiny-label text-green-400 mb-1">Target Vector</p>
-          <p className="text-xs font-bold text-white/90 truncate max-w-[140px] uppercase font-headline">
-            {bestStation?.name || "SCANNING..."}
-          </p>
-        </div>
-      </div>
-
-      <div className="absolute bottom-4 left-4 z-[500] pointer-events-none">
-        <div className="glass px-4 py-2 rounded-full border border-white/10 backdrop-blur-md bg-black/40 shadow-[0_0_20px_rgba(0,0,0,0.5)] flex items-center space-x-4">
-          <p className="text-[10px] text-white/60 font-mono tracking-tighter">
-            LAT: {center[0].toFixed(5)}
-          </p>
-          <div className="w-px h-3 bg-white/20" />
-          <p className="text-[10px] text-white/60 font-mono tracking-tighter">
-            LNG: {center[1].toFixed(5)}
-          </p>
-        </div>
-      </div>
-
-      <style jsx global>{`
-        .cyberpunk-popup .leaflet-popup-content-wrapper {
-          background: rgba(255, 255, 255, 0.95);
-          border-radius: 12px;
-          border: 1px solid rgba(73, 217, 255, 0.3);
-          box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        }
-        .cyberpunk-popup .leaflet-popup-tip {
-          background: rgba(255, 255, 255, 0.95);
-        }
-        .leaflet-container {
-          background: #0b0f14 !important;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: .4; }
-        }
-      `}</style>
     </div>
   );
 }
