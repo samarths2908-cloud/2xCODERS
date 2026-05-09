@@ -1,5 +1,9 @@
 import type { Station } from "./charging";
 
+/**
+ * Environment variable retrieval with fallbacks.
+ * Using NEXT_PUBLIC prefix for variables accessed on the client-side.
+ */
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const OPEN_CHARGE_MAP_API_KEY = process.env.NEXT_PUBLIC_OPEN_CHARGE_MAP_API_KEY || "";
 
@@ -26,7 +30,25 @@ type OpenChargePoi = {
  */
 function toStation(item: OpenChargePoi, index: number): Station {
   const powerKW = item.Connections?.[0]?.PowerKW ?? 120;
-  const distanceKm = item.AddressInfo?.Distance ?? 1 + index * 0.8;
+  const distanceKm = item.AddressInfo?.Distance ?? (1 + index * 0.8);
+
+  // Map external status strings to our internal union type.
+  let internalStatus: "Free" | "Busy" | "Charging" | "Delayed" = "Free";
+  const rawStatus = item.StatusType?.Title?.toLowerCase() || "";
+
+  if (rawStatus.includes("available") || rawStatus.includes("operational")) {
+    internalStatus = "Free";
+  } else if (rawStatus.includes("occupied") || rawStatus.includes("in use")) {
+    internalStatus = "Charging";
+  } else if (rawStatus.includes("busy") || rawStatus.includes("partially")) {
+    internalStatus = "Busy";
+  } else if (rawStatus.includes("out of order") || rawStatus.includes("broken")) {
+    internalStatus = "Delayed";
+  } else {
+    // Randomize for variety if API status is unknown
+    const states: ("Free" | "Busy" | "Charging" | "Delayed")[] = ["Free", "Busy", "Charging", "Delayed"];
+    internalStatus = states[index % 4];
+  }
 
   return {
     id: `real-${index}`,
@@ -37,15 +59,7 @@ function toStation(item: OpenChargePoi, index: number): Station {
     chargerKW: powerKW,
     batteryCapacityKWh: 75,
     availablePorts: Math.max(1, item.NumberOfPoints ?? 1),
-    status: item.StatusType?.Title?.toLowerCase().includes("available")
-      ? "Free"
-      : index % 4 === 0
-      ? "Free"
-      : index % 4 === 1
-      ? "Busy"
-      : index % 4 === 2
-      ? "Charging"
-      : "Delayed",
+    status: internalStatus,
   };
 }
 
@@ -53,21 +67,29 @@ function toStation(item: OpenChargePoi, index: number): Station {
  * Fetches raw station data from OpenChargeMap.
  */
 export async function fetchNearbyStations(latitude: number, longitude: number): Promise<OpenChargePoi[]> {
-  const url = `https://api.openchargemap.io/v3/poi/?output=json&maxresults=20&latitude=${latitude}&longitude=${longitude}&distance=10&distanceunit=KM&key=${OPEN_CHARGE_MAP_API_KEY}`;
-  
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Failed to fetch charging stations");
+  if (!OPEN_CHARGE_MAP_API_KEY) {
+    console.warn("OpenChargeMap API key is missing. Using fallback empty list.");
+    return [];
   }
 
-  return response.json();
+  const url = `https://api.openchargemap.io/v3/poi/?output=json&maxresults=20&latitude=${latitude}&longitude=${longitude}&distance=10&distanceunit=KM&key=${OPEN_CHARGE_MAP_API_KEY}`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching nearby stations:", error);
+    return [];
+  }
 }
 
 /**
- * Loads real stations and transforms them into the internal RankedStation/Station format.
+ * Loads real stations and transforms them into the internal Station format.
  */
 export async function loadRealStations(latitude: number, longitude: number): Promise<Station[]> {
   const rawData: OpenChargePoi[] = await fetchNearbyStations(latitude, longitude);
+  if (rawData.length === 0) return [];
   return rawData.slice(0, 8).map((item, index) => toStation(item, index));
 }
 
@@ -75,14 +97,21 @@ export async function loadRealStations(latitude: number, longitude: number): Pro
  * Fetches ETA data from Google Maps Distance Matrix API.
  */
 export async function fetchRouteETA(origin: string, destination: string): Promise<any> {
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destination}&key=${GOOGLE_MAPS_API_KEY}`;
-  
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Failed to fetch route ETA");
+  if (!GOOGLE_MAPS_API_KEY) {
+    console.warn("Google Maps API key is missing.");
+    return null;
   }
 
-  return response.json();
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destination}&key=${GOOGLE_MAPS_API_KEY}`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching route ETA:", error);
+    return null;
+  }
 }
 
 /**
