@@ -22,14 +22,16 @@
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
   --ring: 240 4.9% 83.9%;
-  --radius: 0.75rem;
+  --radius: 1rem;
 }
 
-body {
-  background: #050505;
-  color: #ffffff;
-  font-family: 'Inter', sans-serif;
-  overflow-x: hidden;
+@layer base {
+  body {
+    background: #050505;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
 }
 
 .font-headline {
@@ -42,6 +44,12 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass:hover {
+  border-color: rgba(6, 182, 212, 0.2);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .page-shell {
@@ -49,8 +57,8 @@ body {
   min-height: 100vh;
   padding: 1.5rem;
   gap: 1.5rem;
-  background: radial-gradient(circle at top right, rgba(6, 182, 212, 0.05), transparent 40%),
-              radial-gradient(circle at bottom left, rgba(6, 182, 212, 0.03), transparent 30%);
+  background: radial-gradient(circle at top right, rgba(6, 182, 212, 0.08), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.05), transparent 30%);
 }
 
 .sidebar {
@@ -87,77 +95,80 @@ body {
 }
 
 .nav-btn {
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
   border-radius: 1rem;
   color: rgba(255, 255, 255, 0.5);
   font-weight: 600;
   font-size: 0.875rem;
   border: 1px solid transparent;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s ease;
 }
 
 .nav-btn:hover {
   background: rgba(255, 255, 255, 0.05);
   color: white;
+  transform: translateX(4px);
 }
 
 .nav-btn.active {
   background: rgba(6, 182, 212, 0.1);
-  border-color: rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.3);
   color: #06b6d4;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
-}
-
-.hero {
-  border-radius: 2rem;
-}
-
-.panel {
-  border-radius: 2rem;
-}
-
-.tiny-label {
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 0.65rem;
-  font-weight: 800;
-  opacity: 0.6;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
 }
 
 .glow-btn {
   background: linear-gradient(135deg, #06b6d4, #0891b2);
   color: black;
-  border-radius: 1.25rem;
+  border-radius: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+  transition: all 0.3s ease;
 }
 
 .glow-btn:hover {
   box-shadow: 0 8px 30px rgba(6, 182, 212, 0.5);
   transform: translateY(-2px);
+  filter: brightness(1.1);
 }
 
-.bg-grid {
+.bg-particles {
   position: fixed;
   inset: 0;
-  background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-  background-size: 50px 50px;
-  pointer-events: none;
+  overflow: hidden;
+  z-index: -1;
 }
 
-.custom-marker {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: float 20s infinite linear;
+}
+
+@keyframes float {
+  from { transform: translateY(100vh) translateX(0); }
+  to { transform: translateY(-10vh) translateX(100px); }
 }
 
 .cyber-popup .leaflet-popup-content-wrapper {
-  background: rgba(0, 0, 0, 0.8) !important;
+  background: rgba(10, 10, 10, 0.9) !important;
   color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
   backdrop-filter: blur(10px) !important;
   border-radius: 1rem !important;
+  padding: 0.5rem;
 }
 
 .cyber-popup .leaflet-popup-tip {
-  background: rgba(0, 0, 0, 0.8) !important;
+  background: rgba(6, 182, 212, 0.3) !important;
 }
 
 @media (max-width: 1024px) {

@@ -11,23 +11,31 @@ export function rankStations(
 ): RankedStation[] {
   return stations.map(station => {
     // 1. Travel Time
+    // Using a base travel time + scaling by distance
     const travelMinutes = Math.round((station.distanceKm / avgSpeedKph) * 60);
 
-    // 2. Wait Time (Queue * Avg Session / Available Ports)
-    // Simplified: If ports are available, wait is lower.
+    // 2. Wait Time (Queue * Avg Session / Effective Ports)
+    // We assume 1 port can clear 1 vehicle in avgSessionMinutes
+    // If ports are available, wait is minimal.
     const effectivePorts = Math.max(1, station.availablePorts);
-    const waitMinutes = Math.max(0, Math.round((station.queueLength * station.avgSessionMinutes) / effectivePorts));
+    const waitMinutes = station.availablePorts > 0 
+      ? 0 
+      : Math.max(0, Math.round((station.queueLength * station.avgSessionMinutes) / (station.totalPorts || 4)));
 
     // 3. Charge Time
+    // Time (h) = Energy (kWh) / Power (kW)
     const energyNeeded = ((targetBattery - currentBattery) / 100) * station.batteryCapacityKWh;
-    const chargeMinutes = Math.round((energyNeeded / (station.chargerKW * 0.9)) * 60);
+    // Efficiency factor for DC charging (losses, cooling, etc.)
+    const efficiency = 0.85;
+    const chargeMinutes = Math.round((energyNeeded / (station.chargerKW * efficiency)) * 60);
 
     const totalEffectiveMinutes = travelMinutes + waitMinutes + chargeMinutes;
 
-    // Score: Lower is better. Bonus for 'Free' status.
+    // Score: Lower is better.
+    // Bonus for 'Free' status and high power.
     let score = totalEffectiveMinutes;
     if (station.status === 'Free') score -= 5;
-    if (station.availablePorts > 0) score -= 10;
+    if (station.chargerKW > 200) score -= 10;
 
     return {
       ...station,

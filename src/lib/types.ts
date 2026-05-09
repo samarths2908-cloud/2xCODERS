@@ -8,8 +8,8 @@ export interface Location {
 export interface Station {
   id: string;
   name: string;
-  city?: string;
-  state?: string;
+  city: string;
+  state: string;
   location: Location;
   totalPorts: number;
   availablePorts: number;
@@ -18,9 +18,10 @@ export interface Station {
   batteryCapacityKWh: number;
   queueLength: number;
   status: StationStatus;
-  operator?: string;
-  connectorType?: string;
+  operator: string;
+  connectorType: string;
   distanceKm: number;
+  usageType?: string;
 }
 
 export interface RankedStation extends Station {
