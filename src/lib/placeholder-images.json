@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "station-1",
+      "description": "Modern EV charging station with blue LED indicators",
+      "imageUrl": "https://picsum.photos/seed/ev1/800/600",
+      "imageHint": "ev charging"
+    },
+    {
+      "id": "station-2",
+      "description": "Outdoor charging hub at a shopping center",
+      "imageUrl": "https://picsum.photos/seed/ev2/800/600",
+      "imageHint": "parking station"
+    },
+    {
+      "id": "profile-user",
+      "description": "User profile avatar placeholder",
+      "imageUrl": "https://picsum.photos/seed/user/200/200",
+      "imageHint": "profile person"
+    }
+  ]
 }
