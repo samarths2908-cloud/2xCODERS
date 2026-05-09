@@ -1,19 +1,14 @@
 import type { Station } from "./charging";
 
-/**
- * Environment variable retrieval with fallbacks.
- * Using NEXT_PUBLIC prefix for variables accessed on the client-side.
- */
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const OPEN_CHARGE_MAP_API_KEY = process.env.NEXT_PUBLIC_OPEN_CHARGE_MAP_API_KEY || "";
 
-/**
- * @interface OpenChargePoi - Type definition for OpenChargeMap POI response.
- */
 type OpenChargePoi = {
   AddressInfo?: {
     Title?: string;
     Distance?: number;
+    Latitude?: number;
+    Longitude?: number;
   };
   NumberOfPoints?: number;
   Connections?: {
@@ -25,14 +20,10 @@ type OpenChargePoi = {
   };
 };
 
-/**
- * Helper mapper to convert external API data to internal Station format.
- */
 function toStation(item: OpenChargePoi, index: number): Station {
   const powerKW = item.Connections?.[0]?.PowerKW ?? 120;
   const distanceKm = item.AddressInfo?.Distance ?? (1 + index * 0.8);
 
-  // Map external status strings to our internal union type.
   let internalStatus: "Free" | "Busy" | "Charging" | "Delayed" = "Free";
   const rawStatus = item.StatusType?.Title?.toLowerCase() || "";
 
@@ -45,7 +36,6 @@ function toStation(item: OpenChargePoi, index: number): Station {
   } else if (rawStatus.includes("out of order") || rawStatus.includes("broken")) {
     internalStatus = "Delayed";
   } else {
-    // Randomize for variety if API status is unknown
     const states: ("Free" | "Busy" | "Charging" | "Delayed")[] = ["Free", "Busy", "Charging", "Delayed"];
     internalStatus = states[index % 4];
   }
@@ -63,12 +53,9 @@ function toStation(item: OpenChargePoi, index: number): Station {
   };
 }
 
-/**
- * Fetches raw station data from OpenChargeMap.
- */
 export async function fetchNearbyStations(latitude: number, longitude: number): Promise<OpenChargePoi[]> {
   if (!OPEN_CHARGE_MAP_API_KEY) {
-    console.warn("OpenChargeMap API key is missing. Using fallback empty list.");
+    console.warn("OpenChargeMap API key is missing. Using fallback.");
     return [];
   }
 
@@ -84,18 +71,12 @@ export async function fetchNearbyStations(latitude: number, longitude: number): 
   }
 }
 
-/**
- * Loads real stations and transforms them into the internal Station format.
- */
 export async function loadRealStations(latitude: number, longitude: number): Promise<Station[]> {
   const rawData: OpenChargePoi[] = await fetchNearbyStations(latitude, longitude);
   if (rawData.length === 0) return [];
   return rawData.slice(0, 8).map((item, index) => toStation(item, index));
 }
 
-/**
- * Fetches ETA data from Google Maps Distance Matrix API.
- */
 export async function fetchRouteETA(origin: string, destination: string): Promise<any> {
   if (!GOOGLE_MAPS_API_KEY) {
     console.warn("Google Maps API key is missing.");
@@ -114,9 +95,6 @@ export async function fetchRouteETA(origin: string, destination: string): Promis
   }
 }
 
-/**
- * Simulates or fetches real-time port availability updates.
- */
 export async function fetchStationAvailability() {
   return {
     availablePorts: Math.floor(Math.random() * 4),
