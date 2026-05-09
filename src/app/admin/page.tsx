@@ -1,11 +1,11 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MOCK_STATIONS } from '@/lib/mock-data';
 import { Activity, Users, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 const chartData = [
   { time: '08:00', load: 30 },
@@ -18,6 +18,17 @@ const chartData = [
 ];
 
 export default function AdminDashboard() {
+  const [stationRevenues, setStationRevenues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Generate random revenues only on client side to avoid hydration mismatch
+    const revenues: Record<string, string> = {};
+    MOCK_STATIONS.forEach(st => {
+      revenues[st.id] = (Math.random() * 5000 + 2000).toFixed(0);
+    });
+    setStationRevenues(revenues);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background p-8 font-body">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -130,7 +141,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 font-headline font-bold text-primary">{st.avgSessionMinutes}m</td>
-                        <td className="px-6 py-4 font-bold">${(Math.random() * 5000 + 2000).toFixed(0)}</td>
+                        <td className="px-6 py-4 font-bold">${stationRevenues[st.id] || '...'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -147,7 +158,7 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[400px]">
+              <div className="overflow-auto h-[400px]">
                 <div className="p-6 space-y-6">
                   {[1, 2, 3, 4, 5, 6].map((i) => (
                     <div key={i} className="flex space-x-4">
@@ -160,16 +171,11 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
   );
-}
-
-// Minimal placeholder scroll area if original not enough
-function ScrollArea({ children, className }: { children: React.ReactNode, className?: string }) {
-  return <div className={`overflow-auto ${className}`}>{children}</div>;
 }

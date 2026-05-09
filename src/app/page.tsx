@@ -39,6 +39,13 @@ type Tab = "dashboard" | "map" | "queue" | "admin";
 type Mode = "demo" | "real";
 type ChargeMode = "full" | "custom";
 
+interface Particle {
+  left: string;
+  top: string;
+  delay: string;
+  opacity: number;
+}
+
 export default function WattWiseApp() {
   const [mode, setMode] = useState<Mode>("demo");
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
@@ -48,6 +55,7 @@ export default function WattWiseApp() {
   const [startPct, setStartPct] = useState(25);
   const [targetPct, setTargetPct] = useState(80);
   const [tick, setTick] = useState(0);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
   const scrollRefs = {
     dashboard: useRef<HTMLDivElement>(null),
@@ -55,6 +63,17 @@ export default function WattWiseApp() {
     queue: useRef<HTMLDivElement>(null),
     admin: useRef<HTMLDivElement>(null),
   };
+
+  // Generate particles only on the client side to avoid hydration mismatch
+  useEffect(() => {
+    const generated = Array.from({ length: 30 }).map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      delay: `${Math.random() * 20}s`,
+      opacity: Math.random() * 0.5
+    }));
+    setParticles(generated);
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -95,15 +114,15 @@ export default function WattWiseApp() {
     <main className="page-shell">
       {/* Background Particles */}
       <div className="bg-particles">
-        {Array.from({ length: 30 }).map((_, i) => (
+        {particles.map((p, i) => (
           <div 
             key={i} 
             className="particle" 
             style={{ 
-              left: `${Math.random() * 100}%`, 
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 20}s`,
-              opacity: Math.random() * 0.5
+              left: p.left, 
+              top: p.top,
+              animationDelay: p.delay,
+              opacity: p.opacity
             }} 
           />
         ))}
