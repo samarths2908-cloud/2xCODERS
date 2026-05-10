@@ -12,8 +12,8 @@ import {
   Battery,
   Trophy,
   Activity,
-  ChevronRight,
-  Loader2
+  Loader2,
+  ShieldCheck
 } from "lucide-react";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
@@ -21,6 +21,7 @@ import { Location, RankedStation, Booking } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RecommendationPanel from "@/components/RecommendationPanel";
 import BookingModal from "@/components/BookingModal";
 
@@ -48,6 +49,7 @@ export default function Page() {
   const [userLocation] = useState<Location>({ lat: 11.2588, lng: 75.7804 });
   const [currentBat, setCurrentBat] = useState(25);
   const [targetBat, setTargetBat] = useState(80);
+  const [syncMode, setSyncMode] = useState('custom');
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dash');
   const [isSimMode, setIsSimMode] = useState(false);
@@ -57,8 +59,9 @@ export default function Page() {
   ]);
 
   const rankedStations = useMemo(() => {
-    return rankStations(demoStations, currentBat, targetBat, userLocation);
-  }, [currentBat, targetBat, userLocation]);
+    const target = syncMode === 'full' ? 100 : targetBat;
+    return rankStations(demoStations, currentBat, target, userLocation);
+  }, [currentBat, targetBat, syncMode, userLocation]);
 
   const bestStation = rankedStations[0];
   const activeStation = rankedStations.find(s => s.id === selectedStationId) || bestStation;
@@ -196,8 +199,8 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Charge Control Card */}
-          <div className="glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple overflow-y-auto">
+          {/* Charge Control Card - Redesigned to match image */}
+          <div className="glass rounded-[2rem] p-6 flex flex-col gap-6 border-glow-purple overflow-y-auto">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-purple-400" />
@@ -205,21 +208,50 @@ export default function Page() {
               <h3 className="text-lg font-black font-headline uppercase tracking-tight">Charge Control</h3>
             </div>
 
+            {/* Sync Toggle */}
+            <Tabs value={syncMode} onValueChange={setSyncMode} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-black/40 p-1 h-12 rounded-xl">
+                <TabsTrigger value="full" className="rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white font-headline font-black text-[10px] uppercase tracking-widest">Full</TabsTrigger>
+                <TabsTrigger value="custom" className="rounded-lg data-[state=active]:bg-cyan-500 data-[state=active]:text-black font-headline font-black text-[10px] uppercase tracking-widest shadow-[0_0_10px_rgba(6,182,212,0.4)]">Custom</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Telemetry Sliders */}
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Current Level</span>
+                  <span className="text-sm font-black text-cyan-400 font-headline">{currentBat}%</span>
+                </div>
+                <Slider 
+                  value={[currentBat]} 
+                  onValueChange={(v) => setCurrentBat(v[0])} 
+                  max={100} 
+                  step={1} 
+                  className="[&_[role=slider]]:bg-cyan-400 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-[0_0_10px_rgba(6,182,212,0.8)]" 
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Target Level</span>
+                  <span className="text-sm font-black text-purple-400 font-headline">{targetBat}%</span>
+                </div>
+                <Slider 
+                  value={[targetBat]} 
+                  onValueChange={(v) => setTargetBat(v[0])} 
+                  max={100} 
+                  step={1} 
+                  className="[&_[role=slider]]:bg-purple-500 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-[0_0_10px_rgba(139,92,246,0.8)]" 
+                />
+              </div>
+            </div>
+
             <RecommendationPanel 
               station={activeStation} 
               isBest={activeStation.id === bestStation.id} 
               onReroute={() => setIsBookingOpen(true)}
             />
-
-            <div className="space-y-6 pt-4 border-t border-white/5">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Target Charge</span>
-                  <span className="text-sm font-black text-purple-400 font-headline">{targetBat}%</span>
-                </div>
-                <Slider value={[targetBat]} onValueChange={(v) => setTargetBat(v[0])} max={100} step={1} className="py-2" />
-              </div>
-            </div>
           </div>
         </div>
 
@@ -272,3 +304,4 @@ export default function Page() {
     </main>
   );
 }
+
