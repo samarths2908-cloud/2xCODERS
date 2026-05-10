@@ -46,7 +46,7 @@ const navItems = [
 
 export default function Page() {
   const { toast } = useToast();
-  const [userLocation] = useState<Location>({ lat: 12.8460, lng: 74.9552 }); // Matching image coords
+  const [userLocation] = useState<Location>({ lat: 12.8460, lng: 74.9552 });
   const [currentBat, setCurrentBat] = useState(25);
   const [targetBat, setTargetBat] = useState(80);
   const [syncMode, setSyncMode] = useState('custom');
@@ -113,7 +113,7 @@ export default function Page() {
       <div className="scanline" />
       
       {/* Sidebar - Left Section */}
-      <aside className="w-64 glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple border-opacity-30">
+      <aside className="w-64 glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple">
         <div className="flex items-center gap-3 px-2">
           <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.5)]">
             <span className="text-white font-black text-xl">W</span>
@@ -179,17 +179,17 @@ export default function Page() {
               </div>
               <div className="flex gap-6 mt-2">
                 <div className="flex items-center gap-2">
-                  <div className="legend-dot bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                  <div className="legend-dot bg-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.9)]" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Best</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 bg-purple-500 rotate-45 shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
+                  <div className="w-2.5 h-2.5 bg-purple-500 rotate-45 shadow-[0_0_12px_rgba(139,92,246,0.9)]" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-white/80">You</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 mt-20 m-6 rounded-[1.5rem] overflow-hidden border border-white/5">
+            <div className="flex-1 mt-20 m-6 rounded-[1.5rem] overflow-hidden border border-white/10">
               <MapView 
                 stations={rankedStations} 
                 bestStationId={bestStation?.id}
@@ -201,7 +201,7 @@ export default function Page() {
           </div>
 
           {/* Charge Control Card */}
-          <div className="glass rounded-[2rem] p-8 flex flex-col gap-8 border-glow-purple border-opacity-40 overflow-y-auto">
+          <div className="glass rounded-[2rem] p-8 flex flex-col gap-8 border-glow-purple overflow-y-auto">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-purple-400" />
@@ -256,7 +256,7 @@ export default function Page() {
 
         {/* Bottom Row */}
         <div className="h-32 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-          <div className="glass rounded-[1.8rem] p-6 flex items-center gap-8 border-glow-purple border-opacity-30">
+          <div className="glass rounded-[1.8rem] p-6 flex items-center gap-8 border-glow-purple">
             <div className="w-14 h-14 rounded-2xl bg-purple-500/20 flex items-center justify-center shrink-0 border border-purple-500/20">
               <Trophy className="w-7 h-7 text-purple-400" />
             </div>
@@ -275,7 +275,7 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="glass rounded-[1.8rem] p-6 overflow-hidden border-glow-orange border-opacity-40 group relative cursor-pointer">
+          <div className="glass rounded-[1.8rem] p-6 overflow-hidden border-glow-orange group relative cursor-pointer">
              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="w-4 h-4 text-orange-400" />
