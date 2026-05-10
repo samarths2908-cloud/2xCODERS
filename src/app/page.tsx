@@ -98,50 +98,40 @@ export default function Page() {
   useEffect(() => {
     if (!isSimMode) return;
 
-    // Log Interval (Fast updates for visual feedback)
-    const logInterval = setInterval(() => {
-      const randomMsg = [
-        "Sector load rebalanced.",
-        "New vehicle detected in Vector-7.",
-        "Grid capacity optimized.",
-        "Port synchronization complete.",
-        "Neural sync bypass active."
-      ];
-      const newLog = {
-        id: Math.random().toString(),
-        msg: randomMsg[Math.floor(Math.random() * randomMsg.length)],
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'info' as const
-      };
-      setLogs(prev => [newLog, ...prev].slice(0, 10));
-    }, 5000);
+    // Reset selection to "Best" when simulation starts to show the line "move" to the smallest ETA
+    setSelectedStationId(null);
 
     // Grid Jitter Interval (30s as requested)
     const simInterval = setInterval(() => {
       setStations(prev => prev.map(s => {
-        // Only jitter stations within a relevant distance or random subset for performance
-        if (Math.random() > 0.7) {
+        // High jitter to ensure "Best" station actually changes frequently
+        if (Math.random() > 0.4) {
           const newAvailable = Math.floor(Math.random() * (s.totalPorts + 1));
           return {
             ...s,
             availablePorts: newAvailable,
-            queueLength: newAvailable === 0 ? Math.floor(Math.random() * 5) + 1 : 0,
+            queueLength: newAvailable === 0 ? Math.floor(Math.random() * 8) + 1 : 0,
             status: newAvailable > 0 ? "Free" : "Busy"
           };
         }
         return s;
       }));
       
+      const newLog = {
+        id: Math.random().toString(),
+        msg: "Sector re-ranked. Routing to new optimal vector.",
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'info' as const
+      };
+      setLogs(prev => [newLog, ...prev].slice(0, 10));
+
       toast({
         title: "GRID REBALANCED",
-        description: "Neural grid telemetry updated for all sectors.",
+        description: "Optimal charging vector updated based on real-time loads.",
       });
     }, 30000);
 
-    return () => {
-      clearInterval(logInterval);
-      clearInterval(simInterval);
-    };
+    return () => clearInterval(simInterval);
   }, [isSimMode, toast]);
 
   const handleBooking = (booking: Omit<Booking, 'id'>) => {
@@ -214,13 +204,13 @@ export default function Page() {
           
           <div className="flex gap-1 bg-black/60 p-1.5 rounded-xl border border-white/5">
             <button 
-              onClick={() => { setIsSimMode(true); toast({ title: "SIM MODE", description: "Grid behavior simulation active." }); }}
+              onClick={() => setIsSimMode(true)}
               className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-lg ${isSimMode ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-white/30 hover:text-white/60'}`}
             >
               Sim
             </button>
             <button 
-              onClick={() => { setIsSimMode(false); toast({ title: "LIVE MODE", description: "Real-time sector tracking locked." }); }}
+              onClick={() => setIsSimMode(false)}
               className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!isSimMode ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-white/30 hover:text-white/60'}`}
             >
               Live
