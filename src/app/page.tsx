@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -8,25 +9,27 @@ import {
   Map as MapIcon, 
   ListOrdered, 
   History,
-  Settings,
   Battery,
   Trophy,
   Activity,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from "lucide-react";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
-import { Location, RankedStation } from "@/lib/types";
+import { Location, RankedStation, Booking } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import RecommendationPanel from "@/components/RecommendationPanel";
+import BookingModal from "@/components/BookingModal";
 
 const MapView = dynamic(() => import("@/components/MapView"), { 
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-black/40 flex items-center justify-center rounded-[2rem] border border-white/5">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+        <Loader2 className="w-12 h-12 text-cyan-500 animate-spin" />
         <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-400/70 font-headline">Syncing Tactical Grid...</span>
       </div>
     </div>
@@ -34,10 +37,10 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 });
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "Tactical Map", icon: MapIcon },
-  { label: "Queue Feed", icon: ListOrdered },
-  { label: "Logs", icon: History },
+  { id: 'dash', label: "Dashboard", icon: LayoutDashboard },
+  { id: 'map', label: "Tactical Map", icon: MapIcon },
+  { id: 'queue', label: "Queue Feed", icon: ListOrdered },
+  { id: 'logs', label: "Logs", icon: History },
 ];
 
 export default function Page() {
@@ -46,6 +49,12 @@ export default function Page() {
   const [currentBat, setCurrentBat] = useState(25);
   const [targetBat, setTargetBat] = useState(80);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('dash');
+  const [isSimMode, setIsSimMode] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [logs, setLogs] = useState<{id: string, msg: string, time: string, type: 'info' | 'success'}[]>([
+    { id: '1', msg: 'Neural Grid Link established.', time: 'INIT', type: 'info' },
+  ]);
 
   const rankedStations = useMemo(() => {
     return rankStations(demoStations, currentBat, targetBat, userLocation);
@@ -61,13 +70,51 @@ export default function Page() {
     });
   }, [toast]);
 
+  // Simulation Logic
+  useEffect(() => {
+    if (!isSimMode) return;
+    
+    const interval = setInterval(() => {
+      const randomMsg = [
+        "Sector load rebalanced.",
+        "New vehicle detected in Vector-7.",
+        "Grid capacity optimized.",
+        "Port synchronization complete.",
+        "Neural sync bypass active."
+      ];
+      const newLog = {
+        id: Math.random().toString(),
+        msg: randomMsg[Math.floor(Math.random() * randomMsg.length)],
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'info' as const
+      };
+      setLogs(prev => [newLog, ...prev].slice(0, 10));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isSimMode]);
+
+  const handleBooking = (booking: Omit<Booking, 'id'>) => {
+    const newLog = {
+      id: Math.random().toString(),
+      msg: `Reservation locked for ${activeStation.name}.`,
+      time: 'NOW',
+      type: 'success' as const
+    };
+    setLogs(prev => [newLog, ...prev]);
+    toast({
+      title: "RESERVATION SYNCED",
+      description: `Node ${activeStation.name} locked for arrival at ${booking.startTime}.`,
+    });
+  };
+
   return (
     <main className="page-shell">
       {/* Sidebar - Left Section */}
       <aside className="w-64 glass rounded-[2rem] p-6 flex flex-col gap-8 border border-white/5">
         <div className="flex items-center gap-3 px-2">
           <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-            <span className="font-black text-white text-xl">W</span>
+            <Zap className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="text-lg font-black font-headline tracking-tighter leading-none uppercase">WattWise</h1>
@@ -77,7 +124,11 @@ export default function Page() {
 
         <nav className="flex-1 space-y-1">
           {navItems.map((item) => (
-            <button key={item.label} className={`nav-btn ${item.active ? 'active' : ''}`}>
+            <button 
+              key={item.id} 
+              onClick={() => setActiveTab(item.id)}
+              className={`nav-btn ${activeTab === item.id ? 'active' : ''}`}
+            >
               <item.icon className="w-4 h-4" />
               <span>{item.label}</span>
             </button>
@@ -94,8 +145,18 @@ export default function Page() {
           </div>
           
           <div className="flex gap-1 bg-black/40 p-1 rounded-xl">
-            <button className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-white/30">Sim</button>
-            <button className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest bg-cyan-500 text-black rounded-lg shadow-[0_0_10px_rgba(6,182,212,0.3)]">Live</button>
+            <button 
+              onClick={() => { setIsSimMode(true); toast({ title: "SIM MODE", description: "Grid behavior simulation active." }); }}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${isSimMode ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'}`}
+            >
+              Sim
+            </button>
+            <button 
+              onClick={() => { setIsSimMode(false); toast({ title: "LIVE MODE", description: "Real-time sector tracking locked." }); }}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg shadow-[0_0_10px_rgba(6,182,212,0.3)] transition-all ${!isSimMode ? 'bg-cyan-500 text-black' : 'text-white/30 hover:text-white/60'}`}
+            >
+              Live
+            </button>
           </div>
         </div>
       </aside>
@@ -136,7 +197,7 @@ export default function Page() {
           </div>
 
           {/* Charge Control Card */}
-          <div className="glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple">
+          <div className="glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple overflow-y-auto">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-purple-400" />
@@ -144,37 +205,19 @@ export default function Page() {
               <h3 className="text-lg font-black font-headline uppercase tracking-tight">Charge Control</h3>
             </div>
 
-            <div className="flex gap-2 bg-black/40 p-1 rounded-xl">
-              <button className="flex-1 py-2 text-[9px] font-black uppercase tracking-widest text-white/30">Full</button>
-              <button className="flex-1 py-2 text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white rounded-lg shadow-[0_0_10px_rgba(37,99,235,0.4)]">Custom</button>
-            </div>
+            <RecommendationPanel 
+              station={activeStation} 
+              isBest={activeStation.id === bestStation.id} 
+              onReroute={() => setIsBookingOpen(true)}
+            />
 
-            <div className="space-y-6">
+            <div className="space-y-6 pt-4 border-t border-white/5">
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Current Level</span>
-                  <span className="text-sm font-black text-cyan-400 font-headline">{currentBat}%</span>
-                </div>
-                <Slider value={[currentBat]} onValueChange={(v) => setCurrentBat(v[0])} max={100} step={1} className="py-2" />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Target Level</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Target Charge</span>
                   <span className="text-sm font-black text-purple-400 font-headline">{targetBat}%</span>
                 </div>
                 <Slider value={[targetBat]} onValueChange={(v) => setTargetBat(v[0])} max={100} step={1} className="py-2" />
-              </div>
-            </div>
-
-            <div className="mt-auto space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Optimal Target</span>
-                <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[8px] font-black uppercase tracking-widest">Elite</Badge>
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-2xl font-black font-headline leading-none tracking-tighter uppercase">{activeStation.name}</h4>
-                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{activeStation.city}, {activeStation.state}</p>
               </div>
             </div>
           </div>
@@ -188,7 +231,11 @@ export default function Page() {
             </div>
             <div className="flex-1 flex gap-8 overflow-x-auto no-scrollbar">
               {rankedStations.slice(0, 4).map((s, i) => (
-                <div key={s.id} className="min-w-[140px] space-y-1">
+                <div 
+                  key={s.id} 
+                  className={`min-w-[140px] space-y-1 cursor-pointer transition-all ${selectedStationId === s.id ? 'opacity-100 scale-105' : 'opacity-40 hover:opacity-100'}`}
+                  onClick={() => setSelectedStationId(s.id)}
+                >
                   <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Vector {i+1}</p>
                   <p className="text-xs font-black font-headline uppercase truncate">{s.name}</p>
                   <p className="text-[10px] font-bold text-cyan-400">{s.totalEffectiveMinutes}m ETA</p>
@@ -197,18 +244,31 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="glass rounded-[1.5rem] p-4 flex items-center justify-between border-glow-orange cursor-pointer hover:bg-orange-500/5 transition-colors group">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                <Activity className="w-6 h-6 text-orange-400" />
-              </div>
-              <h3 className="text-sm font-black font-headline uppercase tracking-widest">Network Logs</h3>
-            </div>
-            <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-orange-400 transition-colors" />
+          <div className="glass rounded-[1.5rem] p-4 overflow-hidden border-glow-orange group relative">
+             <div className="flex items-center gap-3 mb-2">
+                <Activity className="w-3 h-3 text-orange-400" />
+                <h3 className="text-[10px] font-black font-headline uppercase tracking-widest">Network Logs</h3>
+             </div>
+             <div className="space-y-1">
+                {logs.slice(0, 2).map((log) => (
+                  <div key={log.id} className="flex justify-between items-center gap-2">
+                    <p className={`text-[9px] truncate font-bold uppercase tracking-tight ${log.type === 'success' ? 'text-emerald-400' : 'text-white/40'}`}>
+                      {log.msg}
+                    </p>
+                    <span className="text-[7px] font-black text-white/20 shrink-0">{log.time}</span>
+                  </div>
+                ))}
+             </div>
           </div>
         </div>
-
       </div>
+
+      <BookingModal 
+        station={activeStation} 
+        isOpen={isBookingOpen} 
+        onClose={() => setIsBookingOpen(false)} 
+        onConfirm={handleBooking}
+      />
     </main>
   );
 }
