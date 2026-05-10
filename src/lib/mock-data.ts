@@ -2,13 +2,19 @@ import { Station } from "./types";
 
 /**
  * Comprehensive list of anchor hubs across India.
- * Specifically includes requested high-density zones: Solapur, Proddatur, Kondagaon.
+ * Updated to include high-density request zones.
  */
 const CITIES = [
-  // Requested High Density Zones
+  // High Density Priority Zones
   { name: "Solapur", state: "Maharashtra", lat: 17.6599, lng: 75.9064, coastal: false },
   { name: "Proddatur", state: "Andhra", lat: 14.7303, lng: 78.5516, coastal: false },
   { name: "Kondagaon", state: "Chhattisgarh", lat: 19.5851, lng: 81.6521, coastal: false },
+  { name: "Kurnool", state: "Andhra", lat: 15.8281, lng: 78.0373, coastal: false },
+  { name: "Davangere", state: "Karnataka", lat: 14.4644, lng: 75.9218, coastal: false },
+  { name: "Nandurbar", state: "Maharashtra", lat: 21.3722, lng: 74.2391, coastal: false },
+  { name: "Jodhpur", state: "Rajasthan", lat: 26.2389, lng: 73.0243, coastal: false },
+  { name: "Vijayawada", state: "Andhra", lat: 16.5062, lng: 80.6480, coastal: false },
+  { name: "Guntur", state: "Andhra", lat: 16.3067, lng: 80.4365, coastal: false },
   
   // North & Far North
   { name: "Delhi", state: "Delhi", lat: 28.6139, lng: 77.2090, coastal: false },
@@ -80,23 +86,25 @@ function getDistance(lat1: number, lng1: number, lat2: number, lng2: number) {
 
 /**
  * Generates synthetic stations with a density-focused proximity rejection rule.
- * Specifically targets Solapur, Proddatur, and Kondagaon with higher density.
+ * Now specifically targeting Kurnool, Davangere, Nandurbar, Jodhpur, and AP hubs.
  */
 function generateSyntheticStations(count: number): Station[] {
   const stations: Station[] = [];
-  const minSpacingKm = 5; // Reduced spacing to allow for ~5km density in high-priority zones
+  const minSpacingKm = 5; // Target spacing for priority zones
   
   let i = 0;
   let attempts = 0;
   const maxAttempts = count * 50;
+
+  const PRIORITY_CITIES = ["Solapur", "Proddatur", "Kondagaon", "Kurnool", "Davangere", "Nandurbar", "Jodhpur", "Vijayawada", "Guntur"];
 
   while (stations.length < count && attempts < maxAttempts) {
     attempts++;
     const city = CITIES[i % CITIES.length];
     
     // Scale jitter for high density in specifically requested cities
-    const isPriorityCity = ["Solapur", "Proddatur", "Kondagaon"].includes(city.name);
-    const jitterScale = isPriorityCity ? 0.35 : 1.2; 
+    const isPriorityCity = PRIORITY_CITIES.includes(city.name);
+    const jitterScale = isPriorityCity ? 0.35 : 1.5; 
     
     let latJitter = (pseudoRandom(attempts * 13) - 0.5) * jitterScale;
     let lngJitter = (pseudoRandom(attempts * 37) - 0.5) * jitterScale;
@@ -111,7 +119,9 @@ function generateSyntheticStations(count: number): Station[] {
     const lng = city.lng + lngJitter;
 
     // Proximity rejection to maintain grid clarity
-    const isTooClose = stations.some(s => getDistance(lat, lng, s.latitude, s.longitude) < minSpacingKm);
+    // For priority cities we allow 5km, otherwise we keep it slightly more sparse for balance
+    const currentMinSpacing = isPriorityCity ? 5 : 12;
+    const isTooClose = stations.some(s => getDistance(lat, lng, s.latitude, s.longitude) < currentMinSpacing);
 
     if (!isTooClose) {
       const totalPorts = (Math.floor(pseudoRandom(attempts * 2) * 10)) + 4;
