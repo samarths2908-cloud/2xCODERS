@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
-import { Location, RankedStation, Booking } from "@/lib/types";
+import { Location, RankedStation, Booking, Station } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -63,20 +64,22 @@ export default function Page() {
   const [isSimMode, setIsSimMode] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [stations, setStations] = useState<Station[]>(demoStations);
   const [logs, setLogs] = useState<{id: string, msg: string, time: string, type: 'info' | 'success'}[]>([
     { id: '1', msg: 'Neural Grid Link established.', time: 'INIT', type: 'info' },
   ]);
 
+  // Rank stations based on current grid state
   const rankedStations = useMemo(() => {
     const target = syncMode === 'full' ? 100 : targetBat;
-    return rankStations(demoStations, currentBat, target, userLocation);
-  }, [currentBat, targetBat, syncMode, userLocation]);
+    return rankStations(stations, currentBat, target, userLocation);
+  }, [stations, currentBat, targetBat, syncMode, userLocation]);
 
   const bestStation = rankedStations[0];
   const activeStation = rankedStations.find(s => s.id === selectedStationId) || bestStation;
 
+  // Handle Hydration and setup
   useEffect(() => {
-    // Generate particles on client side to avoid hydration mismatch
     const p = [...Array(15)].map(() => ({
       left: `${Math.random() * 100}%`,
       duration: `${15 + Math.random() * 10}s`,
@@ -91,9 +94,12 @@ export default function Page() {
     });
   }, [toast]);
 
+  // Simulation Logic
   useEffect(() => {
     if (!isSimMode) return;
-    const interval = setInterval(() => {
+
+    // Log Interval (Fast updates for visual feedback)
+    const logInterval = setInterval(() => {
       const randomMsg = [
         "Sector load rebalanced.",
         "New vehicle detected in Vector-7.",
@@ -109,8 +115,34 @@ export default function Page() {
       };
       setLogs(prev => [newLog, ...prev].slice(0, 10));
     }, 5000);
-    return () => clearInterval(interval);
-  }, [isSimMode]);
+
+    // Grid Jitter Interval (30s as requested)
+    const simInterval = setInterval(() => {
+      setStations(prev => prev.map(s => {
+        // Only jitter stations within a relevant distance or random subset for performance
+        if (Math.random() > 0.7) {
+          const newAvailable = Math.floor(Math.random() * (s.totalPorts + 1));
+          return {
+            ...s,
+            availablePorts: newAvailable,
+            queueLength: newAvailable === 0 ? Math.floor(Math.random() * 5) + 1 : 0,
+            status: newAvailable > 0 ? "Free" : "Busy"
+          };
+        }
+        return s;
+      }));
+      
+      toast({
+        title: "GRID REBALANCED",
+        description: "Neural grid telemetry updated for all sectors.",
+      });
+    }, 30000);
+
+    return () => {
+      clearInterval(logInterval);
+      clearInterval(simInterval);
+    };
+  }, [isSimMode, toast]);
 
   const handleBooking = (booking: Omit<Booking, 'id'>) => {
     const newLog = {
@@ -151,7 +183,7 @@ export default function Page() {
             <span className="text-white font-black text-xl">W</span>
           </div>
           <div>
-            <h1 className="text-lg font-black font-headline tracking-tighter leading-none uppercase">WattWise</h1>
+            <h1 className="text-lg font-black font-headline tracking-tighter leading-none uppercase text-white">WattWise</h1>
             <p className="text-[8px] text-white/40 font-bold tracking-[0.2em] uppercase">Command Center</p>
           </div>
         </div>
@@ -176,7 +208,7 @@ export default function Page() {
               <div className="p-1.5 rounded bg-cyan-500/10">
                 <Battery className="w-4 h-4 text-cyan-400" />
               </div>
-              <span className="text-sm font-black font-headline">{currentBat}% Charge</span>
+              <span className="text-sm font-black font-headline text-white">{currentBat}% Charge</span>
             </div>
           </div>
           
@@ -206,7 +238,7 @@ export default function Page() {
           <div className="glass rounded-[2rem] overflow-hidden flex flex-col border-glow-cyan relative">
             <div className="p-8 flex justify-between items-start absolute top-0 left-0 w-full z-10">
               <div>
-                <h2 className="text-2xl font-black font-headline tracking-tight uppercase">Tactical Sector Map</h2>
+                <h2 className="text-2xl font-black font-headline tracking-tight uppercase text-white">Tactical Sector Map</h2>
                 <p className="text-[11px] text-white/50 font-bold mt-1">Lat: {userLocation.lat.toFixed(4)}, Lng: {userLocation.lng.toFixed(4)}</p>
               </div>
               <div className="flex gap-6 mt-2">
@@ -238,7 +270,7 @@ export default function Page() {
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-purple-400" />
               </div>
-              <h3 className="text-lg font-black font-headline uppercase tracking-tight">Charge Control</h3>
+              <h3 className="text-lg font-black font-headline uppercase tracking-tight text-white">Charge Control</h3>
             </div>
 
             <Tabs value={syncMode} onValueChange={setSyncMode} className="w-full">
@@ -300,10 +332,10 @@ export default function Page() {
                   onClick={() => setSelectedStationId(s.id)}
                 >
                   <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Vector {i+1}</p>
-                  <p className="text-sm font-black font-headline uppercase truncate">{s.name}</p>
+                  <p className="text-sm font-black font-headline uppercase truncate text-white">{s.name}</p>
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-cyan-400">{s.totalEffectiveMinutes}min ETA</p>
-                    <p className="text-[10px] font-bold text-white/40">{s.distanceKm.toFixed(1)}Km</p>
+                    <p className="text-[10px] font-bold text-cyan-400">{s.totalEffectiveMinutes} min ETA</p>
+                    <p className="text-[10px] font-bold text-white/40">{s.distanceKm.toFixed(1)} Km</p>
                   </div>
                 </div>
               ))}
@@ -314,7 +346,7 @@ export default function Page() {
              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="w-4 h-4 text-orange-400" />
-                  <h3 className="text-xs font-black font-headline uppercase tracking-[0.2em]">Network Logs</h3>
+                  <h3 className="text-xs font-black font-headline uppercase tracking-[0.2em] text-white">Network Logs</h3>
                 </div>
                 <ChevronRight className="w-3 h-3 text-white/20 group-hover:text-orange-400 transition-colors" />
              </div>
