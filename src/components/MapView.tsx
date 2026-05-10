@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RankedStation, Location } from "@/lib/types";
@@ -60,6 +60,18 @@ export default function MapView({
     });
   }, []);
 
+  const routeLine = useMemo(() => {
+    const targetId = selectedStationId || bestStationId;
+    if (!targetId) return null;
+    const targetStation = stations.find(s => s.id === targetId);
+    if (!targetStation) return null;
+
+    return [
+      [userLocation.lat, userLocation.lng] as [number, number],
+      [targetStation.latitude, targetStation.longitude] as [number, number]
+    ];
+  }, [stations, selectedStationId, bestStationId, userLocation]);
+
   if (typeof window === 'undefined') return null;
 
   return (
@@ -76,6 +88,20 @@ export default function MapView({
         />
         
         <RecenterMap center={[userLocation.lat, userLocation.lng]} />
+
+        {/* Tactical Route Line */}
+        {routeLine && (
+          <Polyline 
+            positions={routeLine}
+            pathOptions={{
+              color: "#06b6d4",
+              dashArray: "5, 10",
+              weight: 2,
+              opacity: 0.6,
+              lineCap: "round"
+            }}
+          />
+        )}
 
         {userIcon && <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon} />}
 
