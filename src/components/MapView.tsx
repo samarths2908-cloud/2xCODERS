@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useMemo } from "react";
@@ -51,8 +50,9 @@ export default function MapView({
       className: "user-marker",
       html: `
         <div class="relative flex items-center justify-center">
-          <div class="absolute w-12 h-12 rounded-full animate-ping opacity-20 bg-cyan-400"></div>
-          <div class="w-4 h-4 rounded-full border-2 border-white bg-cyan-500 shadow-[0_0_20px_#06b6d4]"></div>
+          <div class="absolute w-12 h-12 bg-purple-500/30 animate-ping rounded-full"></div>
+          <div class="w-4 h-4 bg-purple-500 rotate-45 border-2 border-white shadow-[0_0_15px_#8b5cf6]"></div>
+          <div class="absolute -top-10 whitespace-nowrap bg-black/80 px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border border-purple-500/50">You Are Here</div>
         </div>
       `,
       iconSize: [24, 24],
@@ -66,8 +66,8 @@ export default function MapView({
     <div className="relative w-full h-full z-0">
       <MapContainer
         center={[userLocation.lat, userLocation.lng]}
-        zoom={6}
-        style={{ height: "100%", width: "100%", background: "#050505" }}
+        zoom={13}
+        style={{ height: "100%", width: "100%", background: "#02040a" }}
         zoomControl={false}
       >
         <TileLayer
@@ -89,58 +89,25 @@ export default function MapView({
             <CircleMarker
               key={s.id}
               center={[s.latitude, s.longitude]}
-              radius={isBest || isSelected ? 6 : 3.5}
+              radius={isBest || isSelected ? 7 : 4}
               pathOptions={{
-                fillColor: isBest ? "#22c55e" : isSelected ? "#06b6d4" : "#1e40af",
+                fillColor: isBest ? "#06b6d4" : isSelected ? "#3b82f6" : "#1e40af",
                 color: isBest || isSelected ? "#ffffff" : "transparent",
                 weight: isBest || isSelected ? 2 : 0,
-                fillOpacity: isBest || isSelected ? 1 : 0.6,
+                fillOpacity: isBest || isSelected ? 1 : 0.4,
               }}
               eventHandlers={{
                 click: () => onStationSelect(s.id)
               }}
             >
               <Popup className="cyber-popup">
-                <div className="p-6 min-w-[300px] font-headline">
-                  <div className="flex justify-between items-start mb-4">
-                    <h4 className={`font-black text-2xl tracking-tighter uppercase ${isBest ? 'text-green-400' : 'text-cyan-400'}`}>
-                      {s.name}
-                    </h4>
-                  </div>
-                  
-                  <div className="text-[9px] text-white/30 mb-5 uppercase tracking-[0.3em] border-b border-white/10 pb-4 font-black">
-                    Sector: {s.city} // ID: {s.id.slice(0,8)}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="glass p-3 rounded-xl">
-                        <p className="text-[8px] text-white/30 uppercase font-black mb-1 tracking-widest">Core Power</p>
-                        <p className="font-black text-xs text-white">{s.chargerKW}kW</p>
-                      </div>
-                      <div className="glass p-3 rounded-xl">
-                        <p className="text-[8px] text-white/30 uppercase font-black mb-1 tracking-widest">Port Availability</p>
-                        <p className={`font-black text-xs ${s.availablePorts > 0 ? 'text-green-400' : 'text-amber-400'}`}>
-                          {s.availablePorts}/{s.totalPorts}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center bg-cyan-500/10 p-4 rounded-2xl border border-cyan-500/20 shadow-[inset_0_0_10px_rgba(6,182,212,0.1)]">
-                      <div>
-                        <p className="text-[8px] text-cyan-400/50 uppercase font-black tracking-widest">Est. Travel Time</p>
-                        <p className="text-2xl font-black text-cyan-400 tracking-tighter leading-none">{s.totalEffectiveMinutes}<span className="text-[10px] ml-1 opacity-50">MIN</span></p>
-                      </div>
-                      <button 
-                        className="bg-cyan-500 text-black text-[9px] font-black px-5 py-2.5 rounded-xl hover:bg-white transition-all uppercase tracking-widest shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onStationSelect(s.id);
-                        }}
-                      >
-                        Target
-                      </button>
-                    </div>
+                <div className="p-4 min-w-[200px] font-headline">
+                  <h4 className="font-black text-lg tracking-tight uppercase mb-2 text-cyan-400">
+                    {s.name}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-white/50">
+                    <div>POWER: {s.chargerKW}kW</div>
+                    <div>AVAIL: {s.availablePorts}/{s.totalPorts}</div>
                   </div>
                 </div>
               </Popup>
