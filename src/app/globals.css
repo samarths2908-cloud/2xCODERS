@@ -9,20 +9,20 @@
   --card-foreground: 0 0% 98%;
   --popover: 240 10% 3.9%;
   --popover-foreground: 0 0% 98%;
-  --primary: 199 89% 48%;
+  --primary: 191 91% 49%;
   --primary-foreground: 0 0% 9%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
   --muted: 240 3.7% 15.9%;
   --muted-foreground: 240 5% 64.9%;
-  --accent: 199 89% 48%;
+  --accent: 191 91% 49%;
   --accent-foreground: 0 0% 98%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;
-  --radius: 1rem;
+  --ring: 191 91% 49%;
+  --radius: 1.5rem;
 }
 
 @layer base {
@@ -39,17 +39,16 @@
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(10, 10, 10, 0.6);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass:hover {
-  border-color: rgba(6, 182, 212, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(6, 182, 212, 0.3);
 }
 
 .page-shell {
@@ -57,12 +56,12 @@
   min-height: 100vh;
   padding: 1.5rem;
   gap: 1.5rem;
-  background: radial-gradient(circle at top right, rgba(6, 182, 212, 0.08), transparent 40%),
-              radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.05), transparent 30%);
+  background: radial-gradient(circle at 70% 20%, rgba(6, 182, 212, 0.12), transparent 40%),
+              radial-gradient(circle at 10% 80%, rgba(168, 85, 247, 0.08), transparent 30%);
 }
 
 .sidebar {
-  width: 280px;
+  width: 260px;
   border-radius: 2rem;
   padding: 2rem;
   display: flex;
@@ -91,41 +90,42 @@
   font-weight: 800;
   font-size: 1.5rem;
   color: black;
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
 }
 
 .nav-btn {
   padding: 0.875rem 1.25rem;
-  border-radius: 1rem;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 600;
-  font-size: 0.875rem;
+  border-radius: 1.25rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+  font-size: 0.75rem;
   border: 1px solid transparent;
   width: 100%;
   text-align: left;
   transition: all 0.2s ease;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .nav-btn:hover {
   background: rgba(255, 255, 255, 0.05);
   color: white;
-  transform: translateX(4px);
 }
 
 .nav-btn.active {
   background: rgba(6, 182, 212, 0.1);
-  border-color: rgba(6, 182, 212, 0.3);
+  border-color: rgba(6, 182, 212, 0.2);
   color: #06b6d4;
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
 }
 
 .glow-btn {
   background: linear-gradient(135deg, #06b6d4, #0891b2);
   color: black;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
   transition: all 0.3s ease;
 }
@@ -141,37 +141,43 @@
   inset: 0;
   overflow: hidden;
   z-index: -1;
+  pointer-events: none;
 }
 
 .particle {
   position: absolute;
-  width: 2px;
-  height: 2px;
+  width: 1px;
+  height: 1px;
   background: white;
   border-radius: 50%;
-  opacity: 0.3;
-  animation: float 20s infinite linear;
+  opacity: 0.2;
+  animation: float 15s infinite linear;
 }
 
 @keyframes float {
-  from { transform: translateY(100vh) translateX(0); }
-  to { transform: translateY(-10vh) translateX(100px); }
+  from { transform: translateY(105vh) translateX(0); }
+  to { transform: translateY(-5vh) translateX(50px); }
 }
 
 .cyber-popup .leaflet-popup-content-wrapper {
-  background: rgba(10, 10, 10, 0.9) !important;
+  background: rgba(5, 5, 5, 0.95) !important;
   color: white !important;
-  border: 1px solid rgba(6, 182, 212, 0.3) !important;
-  backdrop-filter: blur(10px) !important;
-  border-radius: 1rem !important;
-  padding: 0.5rem;
+  border: 1px solid rgba(6, 182, 212, 0.4) !important;
+  backdrop-filter: blur(15px) !important;
+  border-radius: 1.5rem !important;
+  padding: 0;
+  overflow: hidden;
 }
 
 .cyber-popup .leaflet-popup-tip {
-  background: rgba(6, 182, 212, 0.3) !important;
+  background: rgba(6, 182, 212, 0.4) !important;
 }
 
-@media (max-width: 1024px) {
+.cyber-popup .leaflet-popup-content {
+  margin: 0 !important;
+}
+
+@media (max-width: 1100px) {
   .page-shell {
     flex-direction: column;
   }
@@ -179,5 +185,6 @@
     width: 100%;
     height: auto;
     position: static;
+    padding: 1.5rem;
   }
 }

@@ -1,9 +1,10 @@
 import type {Metadata} from 'next';
 import './globals.css';
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'WattWise EV | Smart Charging Station Management',
-  description: 'Find the fastest charging station by comparing travel, queue, and charging times.',
+  title: 'WATTWISE | Tactical EV Command',
+  description: 'Fastest vector charging network optimization.',
 };
 
 export default function RootLayout({
@@ -16,10 +17,11 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         {children}
+        <Toaster />
       </body>
     </html>
   );
