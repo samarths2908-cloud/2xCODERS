@@ -24,6 +24,7 @@ export interface Station {
   usageType: string;
   latitude: number;
   longitude: number;
+  isSuspicious?: boolean;
 }
 
 export interface RankedStation extends Station {

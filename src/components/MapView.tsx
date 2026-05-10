@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RankedStation, Location } from "@/lib/types";
+import { AlertTriangle } from "lucide-react";
 
 // Fix Leaflet icon issue
 const fixLeafletIcons = () => {
@@ -93,6 +94,7 @@ export default function MapView({
           const s = group[0];
           const isBest = group.some(item => item.id === bestStationId);
           const isSelected = group.some(item => item.id === selectedStationId);
+          const isSuspicious = group.some(item => item.isSuspicious);
           
           const stationIcon = L.divIcon({
             className: "custom-marker",
@@ -103,6 +105,11 @@ export default function MapView({
                 <div class="absolute -top-8 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/10 whitespace-nowrap">
                   <span class="text-[8px] font-black text-white">${s.name} ${group.length > 1 ? `(${group.length})` : ''}</span>
                 </div>
+                ${isSuspicious ? `
+                  <div class="absolute -bottom-6 flex items-center gap-1 bg-amber-500/90 px-1 py-0.5 rounded border border-white/20">
+                    <span class="text-[6px] font-bold text-black">GPS WARNING</span>
+                  </div>
+                ` : ''}
               </div>
             `,
             iconSize: [24, 24],
@@ -121,6 +128,13 @@ export default function MapView({
                   <h4 className="font-bold text-xl mb-1 text-cyan-400">{s.name}</h4>
                   <p className="text-[10px] text-white/50 mb-4 uppercase tracking-widest">{s.city}, {s.state}</p>
                   
+                  {isSuspicious && (
+                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl mb-4 text-amber-500">
+                      <AlertTriangle className="w-3 h-3" />
+                      <p className="text-[9px] font-bold">WARNING: Coordinates outside standard India bounds. Swapped or malformed data likely.</p>
+                    </div>
+                  )}
+
                   <div className="space-y-4 max-h-[300px] overflow-auto pr-2">
                     {group.map(item => (
                       <div key={item.id} className="grid grid-cols-2 gap-3 text-xs border-t border-white/5 pt-3 first:border-t-0 first:pt-0">

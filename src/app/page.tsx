@@ -349,6 +349,12 @@ export default function WattWiseApp() {
                       </div>
                     </div>
                     <div className="flex justify-between items-end">
+                      {s.isSuspicious && (
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-amber-500 mb-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>GPS DRIFT DETECTED</span>
+                        </div>
+                      )}
                       <div>
                         <p className="text-[9px] text-white/40 uppercase">Total ETA</p>
                         <p className="text-2xl font-black text-cyan-400 tracking-tighter">{s.totalEffectiveMinutes}<span className="text-xs ml-0.5">MIN</span></p>
