@@ -45,6 +45,13 @@ const navItems = [
   { id: 'logs', label: "Logs", icon: History },
 ];
 
+interface Particle {
+  left: string;
+  duration: string;
+  drift: string;
+  delay: string;
+}
+
 export default function Page() {
   const { toast } = useToast();
   const [userLocation] = useState<Location>({ lat: 12.8460, lng: 74.9552 });
@@ -55,6 +62,7 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState('dash');
   const [isSimMode, setIsSimMode] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [particles, setParticles] = useState<Particle[]>([]);
   const [logs, setLogs] = useState<{id: string, msg: string, time: string, type: 'info' | 'success'}[]>([
     { id: '1', msg: 'Neural Grid Link established.', time: 'INIT', type: 'info' },
   ]);
@@ -68,6 +76,15 @@ export default function Page() {
   const activeStation = rankedStations.find(s => s.id === selectedStationId) || bestStation;
 
   useEffect(() => {
+    // Generate particles on client side to avoid hydration mismatch
+    const p = [...Array(15)].map(() => ({
+      left: `${Math.random() * 100}%`,
+      duration: `${15 + Math.random() * 10}s`,
+      drift: `${(Math.random() - 0.5) * 100}px`,
+      delay: `${Math.random() * 10}s`
+    }));
+    setParticles(p);
+
     toast({
       title: "SYSTEM ONLINE",
       description: "Tactical EV Sector Grid fully operational.",
@@ -114,15 +131,15 @@ export default function Page() {
       <div className="scanline" />
       
       {/* Animated Particles */}
-      {[...Array(15)].map((_, i) => (
+      {particles.map((p, i) => (
         <div 
           key={i} 
           className="moving-particle"
           style={{
-            left: `${Math.random() * 100}%`,
-            '--duration': `${15 + Math.random() * 10}s`,
-            '--drift': `${(Math.random() - 0.5) * 100}px`,
-            animationDelay: `${Math.random() * 10}s`
+            left: p.left,
+            '--duration': p.duration,
+            '--drift': p.drift,
+            animationDelay: p.delay
           } as any}
         />
       ))}
