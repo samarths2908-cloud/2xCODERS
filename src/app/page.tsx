@@ -13,7 +13,8 @@ import {
   Activity,
   Loader2,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Navigation
 } from "lucide-react";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
@@ -112,8 +113,22 @@ export default function Page() {
     <main className="page-shell relative">
       <div className="scanline" />
       
+      {/* Animated Particles */}
+      {[...Array(15)].map((_, i) => (
+        <div 
+          key={i} 
+          className="moving-particle"
+          style={{
+            left: `${Math.random() * 100}%`,
+            '--duration': `${15 + Math.random() * 10}s`,
+            '--drift': `${(Math.random() - 0.5) * 100}px`,
+            animationDelay: `${Math.random() * 10}s`
+          } as any}
+        />
+      ))}
+      
       {/* Sidebar - Left Section */}
-      <aside className="w-64 glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple">
+      <aside className="w-64 glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple relative z-10">
         <div className="flex items-center gap-3 px-2">
           <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.5)]">
             <span className="text-white font-black text-xl">W</span>
@@ -166,7 +181,7 @@ export default function Page() {
       </aside>
 
       {/* Main Grid Content */}
-      <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+      <div className="flex-1 flex flex-col gap-4 overflow-hidden relative z-10">
         
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 min-h-0">
           
@@ -264,12 +279,15 @@ export default function Page() {
               {rankedStations.slice(0, 5).map((s, i) => (
                 <div 
                   key={s.id} 
-                  className={`min-w-[160px] space-y-1.5 cursor-pointer transition-all ${selectedStationId === s.id ? 'opacity-100 scale-105' : 'opacity-40 hover:opacity-100'}`}
+                  className={`min-w-[180px] space-y-1.5 cursor-pointer transition-all ${selectedStationId === s.id ? 'opacity-100 scale-105' : 'opacity-40 hover:opacity-100'}`}
                   onClick={() => setSelectedStationId(s.id)}
                 >
                   <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Vector {i+1}</p>
                   <p className="text-sm font-black font-headline uppercase truncate">{s.name}</p>
-                  <p className="text-[11px] font-bold text-cyan-400">{s.totalEffectiveMinutes}m ETA</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-cyan-400">{s.totalEffectiveMinutes}min ETA</p>
+                    <p className="text-[10px] font-bold text-white/40">{s.distanceKm.toFixed(1)}Km</p>
+                  </div>
                 </div>
               ))}
             </div>

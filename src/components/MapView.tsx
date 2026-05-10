@@ -132,9 +132,11 @@ export default function MapView({
                   <h4 className="font-black text-lg tracking-tight uppercase mb-2 text-cyan-400">
                     {s.name}
                   </h4>
-                  <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-white/60">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-bold text-white/60">
                     <div>POWER: {s.chargerKW}kW</div>
                     <div>AVAIL: {s.availablePorts}/{s.totalPorts}</div>
+                    <div>DIST: {s.distanceKm.toFixed(1)}Km</div>
+                    <div>ETA: {s.totalEffectiveMinutes}min</div>
                   </div>
                 </div>
               </Popup>

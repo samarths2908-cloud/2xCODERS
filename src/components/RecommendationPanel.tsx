@@ -2,7 +2,7 @@
 
 import React from "react";
 import { RankedStation } from "@/lib/types";
-import { Zap, Clock, Navigation, BatteryCharging } from "lucide-react";
+import { Zap, Clock, Navigation, BatteryCharging, MapPin } from "lucide-react";
 
 interface Props {
   station: RankedStation;
@@ -28,9 +28,12 @@ export default function RecommendationPanel({ station, isBest, onReroute }: Prop
           <h4 className="text-2xl font-black font-headline tracking-tighter leading-tight uppercase max-w-[240px] break-words">
             {station.name}
           </h4>
-          <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
-            {station.city}, {station.state}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-3 h-3 text-white/40" />
+            <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
+              {station.city}, {station.distanceKm.toFixed(1)}Km
+            </p>
+          </div>
         </div>
       </div>
 
@@ -40,28 +43,28 @@ export default function RecommendationPanel({ station, isBest, onReroute }: Prop
             <Navigation className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[9px] font-black uppercase tracking-widest font-headline">Travel</span>
           </div>
-          <strong className="text-xl font-headline font-black">{station.travelMinutes}<span className="text-[10px] ml-1 text-white/30">M</span></strong>
+          <strong className="text-xl font-headline font-black">{station.travelMinutes}<span className="text-[10px] ml-1 text-white/30">min</span></strong>
         </div>
         <div className="glass p-4 rounded-2xl flex flex-col justify-between h-20 border-white/5">
           <div className="flex items-center gap-2 opacity-60">
             <Clock className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-[9px] font-black uppercase tracking-widest font-headline">Wait</span>
           </div>
-          <strong className="text-xl font-headline font-black text-amber-400">{station.waitMinutes}<span className="text-[10px] ml-1 opacity-30">M</span></strong>
+          <strong className="text-xl font-headline font-black text-amber-400">{station.waitMinutes}<span className="text-[10px] ml-1 opacity-30">min</span></strong>
         </div>
         <div className="glass p-4 rounded-2xl flex flex-col justify-between h-20 border-white/5">
           <div className="flex items-center gap-2 opacity-60">
             <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-[9px] font-black uppercase tracking-widest font-headline">Charge</span>
           </div>
-          <strong className="text-xl font-headline font-black text-emerald-400">{station.chargeMinutes}<span className="text-[10px] ml-1 opacity-30">M</span></strong>
+          <strong className="text-xl font-headline font-black text-emerald-400">{station.chargeMinutes}<span className="text-[10px] ml-1 opacity-30">min</span></strong>
         </div>
         <div className="glass p-4 rounded-2xl border-cyan-500/40 bg-cyan-500/5 flex flex-col justify-between h-20 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
           <div className="flex items-center gap-2">
             <Zap className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[9px] font-black uppercase tracking-widest font-headline text-cyan-400">Total</span>
           </div>
-          <strong className="text-xl font-headline font-black text-cyan-400">{station.totalEffectiveMinutes}<span className="text-[10px] ml-1 text-cyan-400/40">M</span></strong>
+          <strong className="text-xl font-headline font-black text-cyan-400">{station.totalEffectiveMinutes}<span className="text-[10px] ml-1 text-cyan-400/40">min</span></strong>
         </div>
       </div>
 
