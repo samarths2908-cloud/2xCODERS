@@ -1,27 +1,77 @@
 import { Station } from "./types";
 
-// Parsed entries from your provided list
-export const demoStations: Station[] = [
-  { id: "st-01", name: "Tatalev Luxon Motors Tata Power", city: "Kochi", state: "Kerala", latitude: 10.01145474, longitude: 76.3113875, location: { lat: 10.01145474, lng: 76.3113875 }, totalPorts: 4, availablePorts: 2, avgSessionMinutes: 45, chargerKW: 50, batteryCapacityKWh: 80, queueLength: 1, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-02", name: "TML Stee Gokulam Motors Tata Power", city: "Madurai", state: "Tamil Nadu", latitude: 10.03915487, longitude: 78.31565881, location: { lat: 10.03915487, lng: 78.31565881 }, totalPorts: 2, availablePorts: 0, avgSessionMinutes: 30, chargerKW: 60, batteryCapacityKWh: 80, queueLength: 2, status: "Busy", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-03", name: "Tata ev Gorulam Motors-Tata Power", city: "Kochi", state: "Kerala", latitude: 10.06130279, longitude: 76.33946199, location: { lat: 10.06130279, lng: 76.33946199 }, totalPorts: 4, availablePorts: 1, avgSessionMinutes: 20, chargerKW: 120, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "NACS", distanceKm: 0, usageType: "Public" },
-  { id: "st-04", name: "Tay Cochin Intemation Airport Hotel Tats Power", city: "Kochi", state: "Kerala", latitude: 10.15999504, longitude: 78.29015422, location: { lat: 10.15999504, lng: 78.29015422 }, totalPorts: 6, availablePorts: 3, avgSessionMinutes: 25, chargerKW: 50, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-05", name: "SAJ Earth Resort-Tata Power", city: "Kochi", state: "Kerala", latitude: 10.16222425, longitude: 76.3846535, location: { lat: 10.16222425, lng: 76.3846535 }, totalPorts: 2, availablePorts: 1, avgSessionMinutes: 50, chargerKW: 30, batteryCapacityKWh: 80, queueLength: 1, status: "Delayed", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Commercial" },
-  { id: "st-06", name: "Luxon Motors-Tata Power", city: "Madurai", state: "Tamil Nadu", latitude: 10.16204205, longitude: 78.38735603, location: { lat: 10.16204205, lng: 78.38735603 }, totalPorts: 4, availablePorts: 2, avgSessionMinutes: 40, chargerKW: 60, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-07", name: "Stee Gokulam Motors Tata Power", city: "Thrissur", state: "Kerala", latitude: 10.22106036, longitude: 76.37675213, location: { lat: 10.22106036, lng: 76.37675213 }, totalPorts: 2, availablePorts: 2, avgSessionMinutes: 30, chargerKW: 30, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-08", name: "Centro Mall Charging Station-Tata Power", city: "Thrissur", state: "Kerala", latitude: 10.23248948, longitude: 76.19594022, location: { lat: 10.23248948, lng: 76.19594022 }, totalPorts: 4, availablePorts: 0, avgSessionMinutes: 60, chargerKW: 25, batteryCapacityKWh: 80, queueLength: 3, status: "Busy", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-09", name: "JOCL Thiruvonam Fuells-Tata Power", city: "Palakkad", state: "Kerala", latitude: 10.76983098, longitude: 76.6680965, location: { lat: 10.76983098, lng: 76.6680965 }, totalPorts: 4, availablePorts: 2, avgSessionMinutes: 35, chargerKW: 50, batteryCapacityKWh: 80, queueLength: 1, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-10", name: "IOCL Thiruvanam Fuels-Tata Power", city: "Palakkad", state: "Kerala", latitude: 10.76983098, longitude: 75.6680965, location: { lat: 10.76983098, lng: 75.6680965 }, totalPorts: 2, availablePorts: 1, avgSessionMinutes: 45, chargerKW: 30, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-11", name: "KVR Automotive-Tata Power", city: "Palakkad", state: "Kerala", latitude: 10.7822582, longitude: 76.65824511, location: { lat: 10.7822582, lng: 76.65824511 }, totalPorts: 4, availablePorts: 4, avgSessionMinutes: 20, chargerKW: 120, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-12", name: "Gokulam Residency Tata Power", city: "Madurai", state: "Tamil Nadu", latitude: 10.4361871, longitude: 78.26520583, location: { lat: 10.4361871, lng: 78.26520583 }, totalPorts: 2, availablePorts: 0, avgSessionMinutes: 30, chargerKW: 50, batteryCapacityKWh: 80, queueLength: 2, status: "Busy", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-13", name: "Tilslev Hysan Motors-Tata Power", city: "Thrissur", state: "Kerala", latitude: 10.49672847, longitude: 76.25836131, location: { lat: 10.49672847, lng: 76.25836131 }, totalPorts: 4, availablePorts: 2, avgSessionMinutes: 40, chargerKW: 60, batteryCapacityKWh: 80, queueLength: 1, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-14", name: "PCK Centenary", city: "Thrissur", state: "Kerala", latitude: 10.52294042, longitude: 76.20624767, location: { lat: 10.52294042, lng: 76.20624767 }, totalPorts: 6, availablePorts: 6, avgSessionMinutes: 20, chargerKW: 150, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Independent", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-15", name: "TML Hyson Motors-Tata Power", city: "Madurai", state: "Tamil Nadu", latitude: 10.54042200, longitude: 78.18967782, location: { lat: 10.54042200, lng: 78.18967782 }, totalPorts: 2, availablePorts: 1, avgSessionMinutes: 30, chargerKW: 50, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-16", name: "Hotel Gokutam Saban-Tata Power", city: "Thrissur", state: "Kerala", latitude: 10.5063666, longitude: 76.04293443, location: { lat: 10.5063666, lng: 76.04293443 }, totalPorts: 4, availablePorts: 2, avgSessionMinutes: 45, chargerKW: 50, batteryCapacityKWh: 80, queueLength: 1, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-17", name: "Shirdi", city: "Shirdi", state: "Maharashtra", latitude: 19.75758399, longitude: 74.47634733, location: { lat: 19.75758399, lng: 74.47634733 }, totalPorts: 4, availablePorts: 4, avgSessionMinutes: 30, chargerKW: 60, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-18", name: "Calicut Airport Charging Station-Tata Power", city: "Kozhikode", state: "Kerala", latitude: 11.14029227, longitude: 75.94831371, location: { lat: 11.14029227, lng: 75.94831371 }, totalPorts: 4, availablePorts: 2, avgSessionMinutes: 40, chargerKW: 50, batteryCapacityKWh: 80, queueLength: 1, status: "Free", operator: "Tata Power", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-19", name: "Trivandrum UST Campus EVCS GO EC", city: "Trivandrum", state: "Kerala", latitude: 8.539990048, longitude: 76.884425, location: { lat: 8.539990048, lng: 76.884425 }, totalPorts: 8, availablePorts: 4, avgSessionMinutes: 20, chargerKW: 120, batteryCapacityKWh: 80, queueLength: 0, status: "Free", operator: "GO EC", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
-  { id: "st-20", name: "Lulu international Mall EVCS-GO EC", city: "Trivandrum", state: "Kerala", latitude: 8.515262882, longitude: 76.89815844, location: { lat: 8.515262882, lng: 76.89815844 }, totalPorts: 12, availablePorts: 8, avgSessionMinutes: 15, chargerKW: 150, batteryCapacityKWh: 80, queueLength: 2, status: "Free", operator: "GO EC", connectorType: "CCS2", distanceKm: 0, usageType: "Public" },
+const CITIES = [
+  { name: "Mumbai", state: "Maharashtra", lat: 19.0760, lng: 72.8777 },
+  { name: "Delhi", state: "Delhi", lat: 28.6139, lng: 77.2090 },
+  { name: "Bangalore", state: "Karnataka", lat: 12.9716, lng: 77.5946 },
+  { name: "Hyderabad", state: "Telangana", lat: 17.3850, lng: 78.4867 },
+  { name: "Ahmedabad", state: "Gujarat", lat: 23.0225, lng: 72.5714 },
+  { name: "Chennai", state: "Tamil Nadu", lat: 13.0827, lng: 80.2707 },
+  { name: "Kolkata", state: "West Bengal", lat: 22.5726, lng: 88.3639 },
+  { name: "Pune", state: "Maharashtra", lat: 18.5204, lng: 73.8567 },
+  { name: "Jaipur", state: "Rajasthan", lat: 26.9124, lng: 75.7873 },
+  { name: "Lucknow", state: "Uttar Pradesh", lat: 26.8467, lng: 80.9462 },
+  { name: "Kochi", state: "Kerala", lat: 9.9312, lng: 76.2673 },
+  { name: "Mangalore", state: "Karnataka", lat: 12.9141, lng: 74.8560 },
+  { name: "Coimbatore", state: "Tamil Nadu", lat: 11.0168, lng: 76.9558 },
+  { name: "Chandigarh", state: "Chandigarh", lat: 30.7333, lng: 76.7794 },
+  { name: "Indore", state: "Madhya Pradesh", lat: 22.7196, lng: 75.8577 },
+  { name: "Surat", state: "Gujarat", lat: 21.1702, lng: 72.8311 },
+  { name: "Guwahati", state: "Assam", lat: 26.1445, lng: 91.7362 },
+  { name: "Bhubaneswar", state: "Odisha", lat: 20.2961, lng: 85.8245 },
+  { name: "Dehradun", state: "Uttarakhand", lat: 30.3165, lng: 78.0322 },
+  { name: "Shimla", state: "Himachal Pradesh", lat: 31.1048, lng: 77.1734 }
 ];
 
+const OPERATORS = ["Tata Power", "Jio-bp", "Zeon Charging", "Statcon Energia", "ChargeZone", "Magenta Mobility", "Fortum", "Ather Grid", "SNAKE", "Glida"];
+const PREFIXES = ["Volt", "Green", "Eco", "Smart", "Hyper", "Neo", "Pure", "Fast", "Super", "Grid"];
+const SUFFIXES = ["Hub", "Nexus", "Station", "Point", "Node", "Vector", "Pulse", "Core", "Port", "Link"];
+const CONNECTORS = ["CCS2", "CHAdeMO", "Type 2", "GB/T", "NACS"];
+
+function generateSyntheticStations(count: number): Station[] {
+  const stations: Station[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const city = CITIES[i % CITIES.length];
+    const operator = OPERATORS[Math.floor(Math.random() * OPERATORS.length)];
+    const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
+    const suffix = SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)];
+    
+    // Spread around the city center (0.2 degrees is approx 20km)
+    const latOffset = (Math.random() - 0.5) * 0.4;
+    const lngOffset = (Math.random() - 0.5) * 0.4;
+    
+    const lat = city.lat + latOffset;
+    const lng = city.lng + lngOffset;
+    
+    const totalPorts = Math.floor(Math.random() * 10) + 2;
+    const availablePorts = Math.floor(Math.random() * (totalPorts + 1));
+    const chargerKW = [25, 50, 60, 120, 150, 250][Math.floor(Math.random() * 6)];
+    
+    stations.push({
+      id: `synthetic-${i}`,
+      name: `${prefix}${suffix} ${city.name} ${i % 5 === 0 ? 'Express' : ''}`,
+      city: city.name,
+      state: city.state,
+      latitude: lat,
+      longitude: lng,
+      location: { lat, lng },
+      totalPorts,
+      availablePorts,
+      avgSessionMinutes: Math.floor(Math.random() * 40) + 20,
+      chargerKW,
+      batteryCapacityKWh: 80,
+      queueLength: availablePorts === 0 ? Math.floor(Math.random() * 4) + 1 : 0,
+      status: availablePorts > 0 ? "Free" : "Busy",
+      operator,
+      connectorType: CONNECTORS[Math.floor(Math.random() * CONNECTORS.length)],
+      distanceKm: 0, // Calculated dynamically
+      usageType: Math.random() > 0.3 ? "Public" : "Commercial"
+    });
+  }
+  
+  return stations;
+}
+
+export const demoStations: Station[] = generateSyntheticStations(400);
 export const MOCK_STATIONS = demoStations;

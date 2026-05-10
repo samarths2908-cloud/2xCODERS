@@ -125,6 +125,9 @@ export default function WattWiseApp() {
   const bestStation = rankedStations[0];
   const selectedStation = rankedStations.find(s => s.id === selectedId) || bestStation;
 
+  // We only show the top 50 in the UI list to prevent lag, but keep all for the map
+  const displayStations = useMemo(() => rankedStations.slice(0, 50), [rankedStations]);
+
   useEffect(() => {
     if (bestStation && !selectedId) {
       setSelectedId(bestStation.id);
@@ -256,7 +259,7 @@ export default function WattWiseApp() {
               <span className="text-cyan-400">VECTOR LOCKED.</span>
             </h2>
             <p className="text-white/60 text-lg leading-relaxed mb-8">
-              Coordinates synced to your browser geolocation. Optimal port selected at {bestStation?.name}.
+              Coordinates synced to your browser geolocation. Showing {rankedStations.length} optimal ports across India.
             </p>
             
             <div className="flex gap-4">
@@ -298,7 +301,7 @@ export default function WattWiseApp() {
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-xl font-bold font-headline">Tactical Sector Map</h3>
-                  <p className="text-xs text-white/40">Lat: {userLocation.lat.toFixed(4)}, Lng: {userLocation.lng.toFixed(4)}</p>
+                  <p className="text-xs text-white/40">Active Nodes: {rankedStations.length} | Lat: {userLocation.lat.toFixed(4)}</p>
                 </div>
                 <div className="flex gap-2">
                   <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/5">
@@ -321,9 +324,9 @@ export default function WattWiseApp() {
             </div>
 
             <div ref={scrollRefs.queue} className="panel glass p-8 rounded-[2.5rem]">
-              <h3 className="text-xl font-bold font-headline mb-6">Network Ranking</h3>
+              <h3 className="text-xl font-bold font-headline mb-6">Network Ranking (Top 50)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {rankedStations.map((s) => (
+                {displayStations.map((s) => (
                   <article 
                     key={s.id} 
                     onClick={() => setSelectedId(s.id)}
