@@ -1,8 +1,8 @@
 import { Station } from "./types";
 
 /**
- * Expanded list of 50 anchor points across India to ensure even national spread.
- * Coastal cities are marked to apply strict inland nudges.
+ * Comprehensive list of 45 anchor points across India to ensure even national spread.
+ * Covers every major state and region.
  */
 const CITIES = [
   // North
@@ -16,6 +16,7 @@ const CITIES = [
   { name: "Jaipur", state: "Rajasthan", lat: 26.9124, lng: 75.7873, coastal: false },
   { name: "Agra", state: "UP", lat: 27.1767, lng: 78.0081, coastal: false },
   { name: "Jodhpur", state: "Rajasthan", lat: 26.2389, lng: 73.0243, coastal: false },
+  { name: "Shimla", state: "HP", lat: 31.1048, lng: 77.1734, coastal: false },
 
   // South
   { name: "Bangalore", state: "Karnataka", lat: 12.9716, lng: 77.5946, coastal: false },
@@ -28,6 +29,7 @@ const CITIES = [
   { name: "Mysore", state: "Karnataka", lat: 12.2958, lng: 76.6394, coastal: false },
   { name: "Thiruvananthapuram", state: "Kerala", lat: 8.5241, lng: 76.9366, coastal: true },
   { name: "Vijayawada", state: "Andhra", lat: 16.5062, lng: 80.6480, coastal: false },
+  { name: "Mangalore", state: "Karnataka", lat: 12.9141, lng: 74.8560, coastal: true },
 
   // West
   { name: "Mumbai", state: "Maharashtra", lat: 19.0760, lng: 72.8777, coastal: true },
