@@ -6,7 +6,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RankedStation, Location } from "@/lib/types";
 
-// Fix Leaflet icon issue for the User Marker
+// Fix Leaflet icon issue
 const fixLeafletIcons = () => {
   if (typeof window !== 'undefined') {
     delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -77,6 +77,9 @@ export default function MapView({
 
         {/* Tactical Station Grid */}
         {stations.map((s) => {
+          // Skip suspicious stations (potential ocean markers) to keep map clean
+          if (s.isSuspicious) return null;
+
           const isBest = s.id === bestStationId;
           const isSelected = s.id === selectedStationId;
           
@@ -119,17 +122,6 @@ export default function MapView({
                         <p className={`font-bold text-[10px] ${s.availablePorts > 0 ? 'text-green-400' : 'text-amber-400'}`}>
                           {s.availablePorts}/{s.totalPorts} Ports
                         </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-white/5 p-2 rounded-xl">
-                        <p className="text-[7px] text-white/30 uppercase font-bold mb-0.5">Queue</p>
-                        <p className="font-bold text-[10px]">{s.queueLength} Vehicles</p>
-                      </div>
-                      <div className="bg-white/5 p-2 rounded-xl">
-                        <p className="text-[7px] text-white/30 uppercase font-bold mb-0.5">Operator</p>
-                        <p className="font-bold text-[10px] truncate">{s.operator}</p>
                       </div>
                     </div>
                     

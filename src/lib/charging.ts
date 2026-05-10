@@ -1,29 +1,29 @@
 import { Station, RankedStation, Location } from "./types";
 
 /**
- * India Bounding Box
+ * India Bounding Box - Strict Land Boundaries (Approx)
  */
 const INDIA_BOUNDS = {
-  lat: { min: 6, max: 38 },
-  lng: { min: 68, max: 98 }
+  lat: { min: 6.7, max: 37.5 },
+  lng: { min: 68.1, max: 97.4 }
 };
 
 /**
  * Cleans and validates coordinates.
- * Swaps lat/lng if they appear reversed but would be valid for India.
+ * Strictly checks if the point is within the national bounding box.
  */
 function cleanCoordinates(lat: number, lng: number) {
   let finalLat = lat;
   let finalLng = lng;
   let suspicious = false;
 
-  // Auto-correct potential swap (Indian Longitudes are 70-90, Latitudes are 8-35)
+  // Auto-correct potential swap for common Indian coordinates
   if (lat > 40 && lng < 40) {
     finalLat = lng;
     finalLng = lat;
   }
 
-  // Validate bounds
+  // Validate bounds against strict India bounding box
   if (
     finalLat < INDIA_BOUNDS.lat.min || 
     finalLat > INDIA_BOUNDS.lat.max || 
@@ -54,7 +54,7 @@ function getHaversineDistance(loc1: Location, loc2: Location): number {
 }
 
 /**
- * Calculates the ranking for stations based on total time efficiency relative to user location.
+ * Calculates the ranking for stations based on total time efficiency.
  */
 export function rankStations(
   stations: Station[],
@@ -72,7 +72,7 @@ export function rankStations(
     const distanceKm = getHaversineDistance(userLocation, validLocation);
     const travelMinutes = Math.ceil((distanceKm / avgSpeedKph) * 60);
 
-    // 3. Wait Time (Queue * Avg Session / Effective Ports)
+    // 3. Wait Time
     const waitMinutes = station.availablePorts > 0 
       ? 0 
       : Math.max(0, Math.round((station.queueLength * station.avgSessionMinutes) / (station.totalPorts || 4)));
@@ -85,11 +85,10 @@ export function rankStations(
     const totalEffectiveMinutes = travelMinutes + waitMinutes + chargeMinutes;
 
     // Nearest distance is prioritized heavily in the scoring system
-    // A lower score is better
     let score = totalEffectiveMinutes + (distanceKm * 2.5);
     
-    // Penalty for suspicious GPS data
-    if (suspicious) score += 1000;
+    // Heavy penalty for suspicious (potentially off-land) coordinates
+    if (suspicious) score += 5000;
 
     return {
       ...station,
