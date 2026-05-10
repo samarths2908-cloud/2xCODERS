@@ -42,3 +42,12 @@ export interface User {
   currentBattery: number;
   targetBattery: number;
 }
+
+export interface Booking {
+  id: string;
+  stationId: string;
+  date: string;
+  startTime: string; // HH:mm
+  duration: number; // minutes
+  userEmail: string;
+}

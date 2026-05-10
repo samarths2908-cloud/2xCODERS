@@ -2,6 +2,23 @@ import { Station, RankedStation, Location } from "./types";
 import { estimateTravelTime } from "./utils/charging-calculator";
 
 /**
+ * Calculates Haversine distance in Km
+ */
+function getHaversineDistance(loc1: Location, loc2: Location): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (loc2.lat - loc1.lat) * (Math.PI / 180);
+  const dLon = (loc2.lng - loc1.lng) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(loc1.lat * (Math.PI / 180)) *
+      Math.cos(loc2.lat * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
  * Calculates the ranking for stations based on total time efficiency relative to user location.
  */
 export function rankStations(
@@ -12,23 +29,9 @@ export function rankStations(
   avgSpeedKph: number = 40
 ): RankedStation[] {
   return stations.map(station => {
-    // 1. Travel Time based on actual user coordinates
-    const travelMinutes = estimateTravelTime(
-      userLocation.lat,
-      userLocation.lng,
-      station.location.lat,
-      station.location.lng
-    );
-
-    // Update distanceKm for distance-based sorting
-    const R = 6371;
-    const dLat = (station.location.lat - userLocation.lat) * (Math.PI / 180);
-    const dLon = (station.location.lng - userLocation.lng) * (Math.PI / 180);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(userLocation.lat * (Math.PI / 180)) * Math.cos(station.location.lat * (Math.PI / 180)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distanceKm = R * c;
+    // 1. Distance & Travel Time
+    const distanceKm = getHaversineDistance(userLocation, station.location);
+    const travelMinutes = Math.ceil((distanceKm / avgSpeedKph) * 60);
 
     // 2. Wait Time (Queue * Avg Session / Effective Ports)
     const waitMinutes = station.availablePorts > 0 
@@ -42,12 +45,14 @@ export function rankStations(
 
     const totalEffectiveMinutes = travelMinutes + waitMinutes + chargeMinutes;
 
-    // Score: Lower is better. 
-    // We weight distance highly for the "Nearest" requirement.
-    let score = totalEffectiveMinutes + (distanceKm * 5); 
-    
+    // Score calculation
+    let score = totalEffectiveMinutes;
+    // Boost nearby free stations
     if (station.status === 'Free') score -= 5;
     if (station.chargerKW > 100) score -= 5;
+    
+    // Weight distance heavily for "Nearest" prioritization
+    score += distanceKm * 2;
 
     return {
       ...station,

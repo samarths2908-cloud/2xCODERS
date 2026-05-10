@@ -4,8 +4,9 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
-import { RankedStation, Station, Location } from "@/lib/types";
+import { RankedStation, Station, Location, Booking } from "@/lib/types";
 import RecommendationPanel from "@/components/RecommendationPanel";
+import BookingModal from "@/components/BookingModal";
 import { 
   Zap, 
   Map as MapIcon, 
@@ -17,11 +18,13 @@ import {
   Navigation,
   Loader2,
   BatteryCharging,
-  LocateFixed
+  LocateFixed,
+  AlertTriangle
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 
 const MapView = dynamic(() => import("@/components/MapView"), { 
   ssr: false,
@@ -35,8 +38,7 @@ const MapView = dynamic(() => import("@/components/MapView"), {
   )
 });
 
-// Fixed User Location
-const FIXED_USER_LOCATION: Location = {
+const DEFAULT_LOCATION: Location = {
   lat: 12.846032,
   lng: 74.955173
 };
@@ -53,6 +55,7 @@ interface Particle {
 }
 
 export default function WattWiseApp() {
+  const { toast } = useToast();
   const [mode, setMode] = useState<Mode>("real");
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [rawStations, setRawStations] = useState<Station[]>(demoStations);
@@ -63,6 +66,9 @@ export default function WattWiseApp() {
   const [tick, setTick] = useState(0);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [isLocating, setIsLocating] = useState(true);
+  const [userLocation, setUserLocation] = useState<Location>(DEFAULT_LOCATION);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   const scrollRefs = {
     dashboard: useRef<HTMLDivElement>(null),
@@ -72,7 +78,6 @@ export default function WattWiseApp() {
   };
 
   useEffect(() => {
-    // Generate particles
     const generated = Array.from({ length: 30 }).map(() => ({
       left: `${Math.random() * 100}%`,
       top: `${Math.random() * 100}%`,
@@ -81,9 +86,20 @@ export default function WattWiseApp() {
     }));
     setParticles(generated);
 
-    // Simulate location loading
-    const timer = setTimeout(() => setIsLocating(false), 2000);
-    return () => clearTimeout(timer);
+    // Geolocation Tracking
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setIsLocating(false);
+        },
+        () => {
+          setIsLocating(false); // Fallback to DEFAULT
+        }
+      );
+    } else {
+      setIsLocating(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -103,13 +119,12 @@ export default function WattWiseApp() {
 
   const rankedStations = useMemo(() => {
     const finalTarget = chargeMode === "full" ? 100 : targetPct;
-    return rankStations(rawStations, startPct, finalTarget, FIXED_USER_LOCATION);
-  }, [rawStations, startPct, targetPct, chargeMode, tick]);
+    return rankStations(rawStations, startPct, finalTarget, userLocation);
+  }, [rawStations, startPct, targetPct, chargeMode, userLocation, tick]);
 
   const bestStation = rankedStations[0];
   const selectedStation = rankedStations.find(s => s.id === selectedId) || bestStation;
 
-  // Initialize selected station once best is found
   useEffect(() => {
     if (bestStation && !selectedId) {
       setSelectedId(bestStation.id);
@@ -128,9 +143,33 @@ export default function WattWiseApp() {
     }
   };
 
+  const handleBookConfirm = (bookingData: Omit<Booking, 'id'>) => {
+    // Overlap Prevention
+    const hasOverlap = bookings.some(b => 
+      b.stationId === bookingData.stationId && 
+      b.date === bookingData.date && 
+      b.startTime === bookingData.startTime
+    );
+
+    if (hasOverlap) {
+      toast({
+        variant: "destructive",
+        title: "PORT CONFLICT",
+        description: "This slot is already reserved by another vehicle."
+      });
+      return;
+    }
+
+    const newBooking = { ...bookingData, id: Math.random().toString(36).substr(2, 9) };
+    setBookings([...bookings, newBooking]);
+    toast({
+      title: "RESERVATION LOCKED",
+      description: `Target: ${selectedStation.name} on ${bookingData.date}`
+    });
+  };
+
   return (
     <main className="page-shell">
-      {/* Location Access Banner */}
       {isLocating && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-cyan-500 text-black py-2 px-4 text-center font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
           <Loader2 className="w-3 h-3 animate-spin" />
@@ -138,7 +177,6 @@ export default function WattWiseApp() {
         </div>
       )}
 
-      {/* Background Particles */}
       <div className="bg-particles">
         {particles.map((p, i) => (
           <div 
@@ -154,7 +192,6 @@ export default function WattWiseApp() {
         ))}
       </div>
 
-      {/* Sidebar */}
       <aside className="sidebar glass">
         <div>
           <div className="flex items-center gap-3 mb-10">
@@ -168,9 +205,9 @@ export default function WattWiseApp() {
           <nav className="space-y-2">
             {[
               { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-              { id: "map", icon: MapIcon, label: "Live Map" },
-              { id: "queue", icon: ListOrdered, label: "Reroute Feed" },
-              { id: "admin", icon: Settings, label: "Management" },
+              { id: "map", icon: MapIcon, label: "Tactical Map" },
+              { id: "queue", icon: ListOrdered, label: "Queue Feed" },
+              { id: "admin", icon: Settings, label: "Logs" },
             ].map((item) => (
               <button
                 key={item.id}
@@ -198,7 +235,7 @@ export default function WattWiseApp() {
               onClick={() => setMode("demo")}
               className={`flex-1 py-2 text-[10px] font-bold rounded-xl transition-all ${mode === "demo" ? 'bg-cyan-500 text-black' : 'text-white/40'}`}
             >
-              SIMULATION
+              SIM
             </button>
             <button 
               onClick={() => setMode("real")}
@@ -210,46 +247,44 @@ export default function WattWiseApp() {
         </div>
       </aside>
 
-      {/* Content */}
       <div className="content">
         <header ref={scrollRefs.dashboard} className="hero glass flex flex-col lg:flex-row justify-between items-start gap-8 p-10 rounded-[2.5rem] mt-4">
           <div className="max-w-2xl">
             <p className="text-xs font-bold text-cyan-400 tracking-[0.4em] uppercase mb-3">System Optimized Navigation</p>
             <h2 className="text-6xl font-black font-headline tracking-tighter mb-6 leading-[0.9]">
-              INDIA'S FASTEST<br/>
-              <span className="text-cyan-400">CHARGING VECTORS.</span>
+              NEAREST<br/>
+              <span className="text-cyan-400">VECTOR LOCKED.</span>
             </h2>
             <p className="text-white/60 text-lg leading-relaxed mb-8">
-              Real-time synchronization with {mode === "demo" ? "simulated" : "live"} grid telemetry 
-              at Bangalore & Mangalore sectors. Ranked by minimal wait-time overhead.
+              Coordinates synced to your browser geolocation. Optimal port selected at {bestStation?.name}.
             </p>
             
             <div className="flex gap-4">
               <button onClick={handleReroute} className="glow-btn px-8 py-4 flex items-center gap-2">
                 <Navigation className="w-4 h-4" />
-                Initiate Reroute
+                Reroute to Closest
               </button>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 w-full lg:w-96">
             <div className="glass p-6 border-white/5 rounded-3xl">
-              <span className="text-[10px] uppercase tracking-widest text-cyan-400 font-bold">Best ETA</span>
-              <strong className="text-3xl block mt-2 font-headline">{bestStation?.totalEffectiveMinutes}m</strong>
-              <small className="text-white/40 font-mono text-[9px] uppercase tracking-tighter">{bestStation?.name}</small>
+              <span className="text-[10px] uppercase tracking-widest text-cyan-400 font-bold">Closest</span>
+              <strong className="text-3xl block mt-2 font-headline">{bestStation?.distanceKm.toFixed(1)}km</strong>
+              <small className="text-white/40 font-mono text-[9px] uppercase tracking-tighter">{bestStation?.city}</small>
             </div>
             <div className="glass p-6 border-white/5 rounded-3xl">
-              <span className="text-[10px] uppercase tracking-widest text-amber-400 font-bold">Network Load</span>
-              <strong className="text-3xl block mt-2 font-headline">{rankedStations.reduce((a, s) => a + s.queueLength, 0)}</strong>
-              <small className="text-white/40 font-mono text-[9px] uppercase tracking-tighter">Vehicles in Queue</small>
+              <span className="text-[10px] uppercase tracking-widest text-amber-400 font-bold">Network</span>
+              <strong className="text-3xl block mt-2 font-headline">{rankedStations.length}</strong>
+              <small className="text-white/40 font-mono text-[9px] uppercase tracking-tighter">Active Nodes</small>
             </div>
             <div className="glass p-6 border-white/5 rounded-3xl col-span-2">
-              <span className="text-[10px] uppercase tracking-widest text-green-400 font-bold">Active Ports</span>
+              <span className="text-[10px] uppercase tracking-widest text-green-400 font-bold">Live Reservations</span>
               <div className="flex items-center justify-between mt-2">
-                <strong className="text-3xl font-headline">{rankedStations.reduce((a, s) => a + s.availablePorts, 0)}</strong>
+                <strong className="text-3xl font-headline">{bookings.length}</strong>
                 <div className="flex gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className={`h-1 w-4 rounded-full ${i < 3 ? 'bg-green-500' : 'bg-white/10'}`} />
+                    <div key={i} className={`h-1 w-4 rounded-full ${i < bookings.length ? 'bg-green-500' : 'bg-white/10'}`} />
                   ))}
                 </div>
               </div>
@@ -258,17 +293,17 @@ export default function WattWiseApp() {
         </header>
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div ref={scrollRefs.map} className="lg:col-span-2 space-y-6">
-            <div className="panel glass p-6 rounded-[2.5rem] relative">
+          <div className="lg:col-span-2 space-y-6">
+            <div ref={scrollRefs.map} className="panel glass p-6 rounded-[2.5rem] relative">
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-xl font-bold font-headline">Tactical Sector Map</h3>
-                  <p className="text-xs text-white/40">Mangalore - {FIXED_USER_LOCATION.lat.toFixed(4)}, {FIXED_USER_LOCATION.lng.toFixed(4)}</p>
+                  <p className="text-xs text-white/40">Lat: {userLocation.lat.toFixed(4)}, Lng: {userLocation.lng.toFixed(4)}</p>
                 </div>
                 <div className="flex gap-2">
                   <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/5">
                     <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]" />
-                    <span className="text-[10px] font-bold">OPTIMAL</span>
+                    <span className="text-[10px] font-bold">BEST</span>
                   </div>
                   <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/5">
                     <LocateFixed className="w-3 h-3 text-cyan-400" />
@@ -280,13 +315,13 @@ export default function WattWiseApp() {
                 stations={rankedStations}
                 bestStationId={bestStation?.id}
                 selectedStationId={selectedId}
-                userLocation={FIXED_USER_LOCATION}
+                userLocation={userLocation}
                 onStationSelect={(id) => setSelectedId(id)}
               />
             </div>
 
             <div ref={scrollRefs.queue} className="panel glass p-8 rounded-[2.5rem]">
-              <h3 className="text-xl font-bold font-headline mb-6">Nearby Port Telemetry</h3>
+              <h3 className="text-xl font-bold font-headline mb-6">Network Ranking</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {rankedStations.map((s) => (
                   <article 
@@ -338,7 +373,7 @@ export default function WattWiseApp() {
               <div className="space-y-10">
                 <Tabs value={chargeMode} onValueChange={(v) => setChargeMode(v as ChargeMode)} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 bg-black/40 p-1 border border-white/5 rounded-2xl h-12">
-                    <TabsTrigger value="full" className="rounded-xl data-[state=active]:bg-cyan-500 data-[state=active]:text-black text-xs font-bold">FULL (100%)</TabsTrigger>
+                    <TabsTrigger value="full" className="rounded-xl data-[state=active]:bg-cyan-500 data-[state=active]:text-black text-xs font-bold">FULL</TabsTrigger>
                     <TabsTrigger value="custom" className="rounded-xl data-[state=active]:bg-cyan-500 data-[state=active]:text-black text-xs font-bold">CUSTOM</TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -346,7 +381,7 @@ export default function WattWiseApp() {
                 <div className="space-y-6">
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Start Level</Label>
+                      <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Current Level</Label>
                       <span className="text-xl font-headline font-bold text-cyan-400">{startPct}%</span>
                     </div>
                     <Slider 
@@ -354,7 +389,6 @@ export default function WattWiseApp() {
                       onValueChange={(val) => setStartPct(val[0])}
                       max={95} 
                       step={1} 
-                      className="cursor-pointer"
                     />
                   </div>
 
@@ -370,7 +404,6 @@ export default function WattWiseApp() {
                         min={startPct + 5}
                         max={100} 
                         step={1} 
-                        className="cursor-pointer"
                       />
                     </div>
                   )}
@@ -382,42 +415,47 @@ export default function WattWiseApp() {
                     isBest={selectedStation.id === bestStation?.id}
                     onReroute={handleReroute}
                   />
+                  <button 
+                    onClick={() => setIsBookingOpen(true)}
+                    className="w-full mt-4 py-4 rounded-xl border border-white/10 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all text-[10px] font-bold uppercase tracking-widest"
+                  >
+                    Schedule Slot
+                  </button>
                 </div>
               </div>
             </div>
 
             <div ref={scrollRefs.admin} className="panel glass p-8 rounded-[2.5rem]">
-              <h3 className="text-xl font-bold font-headline mb-6 flex items-center gap-3">
-                <ShieldAlert className="w-6 h-6 text-amber-500" />
-                Network Console
+              <h3 className="text-xl font-bold font-headline mb-6 flex items-center gap-3 text-amber-500">
+                <ShieldAlert className="w-6 h-6" />
+                Network Logs
               </h3>
               <div className="space-y-4">
-                {rankedStations.map((s) => (
-                  <div key={s.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-cyan-500/30 transition-all">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${s.status === 'Free' ? 'bg-green-500' : 'bg-amber-500'} animate-pulse`} />
-                        <span className="text-xs font-bold">{s.name}</span>
-                      </div>
-                      <span className="text-[9px] font-mono text-white/40">{s.chargerKW}kW</span>
-                    </div>
-                    <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-cyan-500 transition-all duration-1000" 
-                        style={{ width: `${(s.availablePorts / s.totalPorts) * 100}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between mt-2 text-[9px] font-bold uppercase tracking-tighter text-white/30">
-                      <span>Occupancy: {Math.round((1 - s.availablePorts / s.totalPorts) * 100)}%</span>
-                      <span>{s.usageType}</span>
+                {bookings.map((b) => (
+                  <div key={b.id} className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
+                    <p className="text-[10px] font-bold text-cyan-400 uppercase">Reservation Confirmed</p>
+                    <p className="text-xs mt-1">{rawStations.find(s => s.id === b.stationId)?.name}</p>
+                    <div className="flex justify-between mt-2 text-[9px] opacity-60">
+                      <span>{b.date} @ {b.startTime}</span>
+                      <span>{b.duration} Min</span>
                     </div>
                   </div>
                 ))}
+                {bookings.length === 0 && (
+                  <p className="text-xs text-white/20 italic text-center py-4">No active reservations.</p>
+                )}
               </div>
             </div>
           </aside>
         </section>
       </div>
+
+      <BookingModal 
+        station={selectedStation}
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        onConfirm={handleBookConfirm}
+      />
     </main>
   );
 }
