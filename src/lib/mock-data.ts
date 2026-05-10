@@ -91,6 +91,7 @@ function getDistance(lat1: number, lng1: number, lat2: number, lng2: number) {
 
 /**
  * Generates synthetic stations with a proximity rejection rule to ensure even spread.
+ * Targeting ~10 stations per hub area to meet the user's request across the national grid.
  */
 function generateSyntheticStations(count: number): Station[] {
   const stations: Station[] = [];
@@ -118,7 +119,7 @@ function generateSyntheticStations(count: number): Station[] {
     const lat = city.lat + latJitter;
     const lng = city.lng + lngJitter;
 
-    // PROXIMITY REJECTION: Check if this point is too close to any existing point in the same city cluster
+    // PROXIMITY REJECTION: Check if this point is too close to any existing point
     const isTooClose = stations.some(s => getDistance(lat, lng, s.latitude, s.longitude) < minSpacingKm);
 
     if (!isTooClose) {
@@ -154,5 +155,6 @@ function generateSyntheticStations(count: number): Station[] {
   return stations;
 }
 
-export const demoStations: Station[] = generateSyntheticStations(400);
+// Targeting ~450 stations (~10 per hub across 45 hubs) to ensure clean "each state" representation.
+export const demoStations: Station[] = generateSyntheticStations(450);
 export const MOCK_STATIONS = demoStations;
