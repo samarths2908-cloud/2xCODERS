@@ -45,8 +45,6 @@ export default function MapView({
     fixLeafletIcons();
   }, []);
 
-  // Use useMemo to prevent re-creating the icon on every render
-  // and ensure it only runs on the client.
   const userIcon = useMemo(() => {
     if (typeof window === 'undefined') return null;
     return L.divIcon({
@@ -103,44 +101,44 @@ export default function MapView({
               }}
             >
               <Popup className="cyber-popup">
-                <div className="p-5 min-w-[280px] bg-black/90 font-headline">
+                <div className="p-6 min-w-[300px] font-headline">
                   <div className="flex justify-between items-start mb-4">
-                    <h4 className={`font-black text-xl tracking-tighter ${isBest ? 'text-green-400' : 'text-cyan-400'}`}>
+                    <h4 className={`font-black text-2xl tracking-tighter uppercase ${isBest ? 'text-green-400' : 'text-cyan-400'}`}>
                       {s.name}
                     </h4>
                   </div>
                   
-                  <div className="text-[10px] text-white/30 mb-5 uppercase tracking-widest border-b border-white/10 pb-3 font-bold">
-                    SEC: {s.latitude.toFixed(3)}N / {s.longitude.toFixed(3)}E
+                  <div className="text-[9px] text-white/30 mb-5 uppercase tracking-[0.3em] border-b border-white/10 pb-4 font-black">
+                    Sector: {s.city} // ID: {s.id.slice(0,8)}
                   </div>
 
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                        <p className="text-[8px] text-white/30 uppercase font-black mb-1 tracking-widest">Loadout</p>
-                        <p className="font-black text-[11px]">{s.chargerKW}kW</p>
+                      <div className="glass p-3 rounded-xl">
+                        <p className="text-[8px] text-white/30 uppercase font-black mb-1 tracking-widest">Core Power</p>
+                        <p className="font-black text-xs text-white">{s.chargerKW}kW</p>
                       </div>
-                      <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                        <p className="text-[8px] text-white/30 uppercase font-black mb-1 tracking-widest">Ports</p>
-                        <p className={`font-black text-[11px] ${s.availablePorts > 0 ? 'text-green-400' : 'text-amber-400'}`}>
+                      <div className="glass p-3 rounded-xl">
+                        <p className="text-[8px] text-white/30 uppercase font-black mb-1 tracking-widest">Port Availability</p>
+                        <p className={`font-black text-xs ${s.availablePorts > 0 ? 'text-green-400' : 'text-amber-400'}`}>
                           {s.availablePorts}/{s.totalPorts}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center bg-cyan-500/10 p-4 rounded-2xl border border-cyan-500/20">
+                    <div className="flex justify-between items-center bg-cyan-500/10 p-4 rounded-2xl border border-cyan-500/20 shadow-[inset_0_0_10px_rgba(6,182,212,0.1)]">
                       <div>
-                        <p className="text-[9px] text-cyan-400/50 uppercase font-black tracking-widest">Delta Time</p>
-                        <p className="text-2xl font-black text-cyan-400 tracking-tighter">{s.totalEffectiveMinutes}<span className="text-[10px] ml-1">MIN</span></p>
+                        <p className="text-[8px] text-cyan-400/50 uppercase font-black tracking-widest">Est. Travel Time</p>
+                        <p className="text-2xl font-black text-cyan-400 tracking-tighter leading-none">{s.totalEffectiveMinutes}<span className="text-[10px] ml-1 opacity-50">MIN</span></p>
                       </div>
                       <button 
-                        className="bg-cyan-500 text-black text-[10px] font-black px-4 py-2 rounded-xl hover:bg-white transition-all uppercase tracking-widest"
+                        className="bg-cyan-500 text-black text-[9px] font-black px-5 py-2.5 rounded-xl hover:bg-white transition-all uppercase tracking-widest shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                         onClick={(e) => {
                           e.stopPropagation();
                           onStationSelect(s.id);
                         }}
                       >
-                        Lock
+                        Target
                       </button>
                     </div>
                   </div>

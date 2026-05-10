@@ -2,35 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 191 91% 49%;
-  --primary-foreground: 0 0% 9%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 262 83% 58%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 191 91% 49%;
-  --radius: 1.5rem;
-}
-
 @layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 191 91% 49%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 191 91% 49%;
+    --radius: 1.5rem;
+  }
+
+  html,
   body {
+    height: 100%;
     background: #050505;
     color: #ffffff;
-    font-family: 'Inter', sans-serif;
     overflow-x: hidden;
+    font-family: 'Inter', sans-serif;
+  }
+
+  * {
+    @apply border-border;
   }
 }
 
@@ -38,77 +44,123 @@
   font-family: 'Space Grotesk', sans-serif;
 }
 
+/* Cyberpunk Design System */
+
 .glass {
-  background: rgba(10, 10, 10, 0.65);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8),
-              inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.8),
+    0 0 20px rgba(6, 182, 212, 0.08);
+  transition: all 0.3s ease;
 }
 
-.neon-border-cyan {
-  border-color: rgba(6, 182, 212, 0.3);
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.1),
-              inset 0 0 15px rgba(6, 182, 212, 0.05);
+.glass:hover {
+  border-color: rgba(6, 182, 212, 0.35);
+  box-shadow: 
+    0 0 25px rgba(6, 182, 212, 0.18),
+    0 0 50px rgba(168, 85, 247, 0.12);
 }
 
-.neon-border-purple {
-  border-color: rgba(168, 85, 247, 0.3);
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.1),
-              inset 0 0 15px rgba(168, 85, 247, 0.05);
+.glow-btn {
+  background: linear-gradient(135deg, #06b6d4, #7c3aed);
+  color: white;
+  border-radius: 1.25rem;
+  font-weight: 800;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 
+    0 0 20px rgba(6,182,212,0.35),
+    0 0 40px rgba(124,58,237,0.18);
+  transition: all 0.3s ease;
 }
 
-.neon-text-cyan {
-  text-shadow: 0 0 10px rgba(6, 182, 212, 0.8),
-               0 0 20px rgba(6, 182, 212, 0.4);
+.glow-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 0 30px rgba(6,182,212,0.5),
+    0 0 60px rgba(124,58,237,0.28);
 }
 
-.neon-text-purple {
-  text-shadow: 0 0 10px rgba(168, 85, 247, 0.8),
-               0 0 20px rgba(168, 85, 247, 0.4);
+.page-shell {
+  min-height: 100vh;
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: 
+    radial-gradient(circle at top left, rgba(6,182,212,0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(124,58,237,0.14), transparent 30%),
+    linear-gradient(to bottom, #020617, #050816);
 }
 
-.cyber-grid {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
+.sidebar {
+  width: 270px;
+  border-radius: 2rem;
+  padding: 1.5rem;
+  background: rgba(5, 5, 10, 0.7);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  box-shadow: 
+    0 0 25px rgba(6, 182, 212, 0.15),
+    inset 0 0 20px rgba(255, 255, 255, 0.02);
+}
+
+.nav-btn {
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border-radius: 1.2rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.25s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.2);
+  color: white;
+}
+
+.nav-btn.active {
+  background: rgba(6, 182, 212, 0.12);
+  color: #67e8f9;
+  border-color: rgba(6, 182, 212, 0.35);
+  box-shadow: 
+    0 0 20px rgba(6, 182, 212, 0.25);
 }
 
 .scanline {
   width: 100%;
   height: 100px;
-  background: linear-gradient(to bottom, transparent, rgba(6, 182, 212, 0.05), transparent);
+  z-index: 9999;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(6, 182, 212, 0.02) 50%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0.1;
   position: absolute;
-  top: -100px;
-  animation: scanline 8s linear infinite;
+  bottom: 100%;
+  animation: scanline 10s linear infinite;
   pointer-events: none;
 }
 
 @keyframes scanline {
-  0% { top: -100px; }
-  100% { top: 100%; }
+  0% { bottom: 100%; }
+  100% { bottom: -100px; }
 }
 
 .cyber-popup .leaflet-popup-content-wrapper {
-  background: rgba(5, 5, 5, 0.95) !important;
+  background: rgba(5, 5, 10, 0.92) !important;
+  border: 1px solid rgba(6, 182, 212, 0.35) !important;
+  border-radius: 1.5rem !important;
   color: white !important;
-  border: 1px solid rgba(6, 182, 212, 0.4) !important;
   backdrop-filter: blur(20px) !important;
-  border-radius: 2rem !important;
-  padding: 0;
-  overflow: hidden;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(6, 182, 212, 0.2) !important;
+  box-shadow: 
+    0 0 30px rgba(6, 182, 212, 0.25),
+    0 0 60px rgba(124, 58, 237, 0.15);
 }
 
 .cyber-popup .leaflet-popup-tip {
-  background: rgba(6, 182, 212, 0.4) !important;
+  background: rgba(6, 182, 212, 0.45) !important;
 }
 
 .cyber-popup .leaflet-popup-content {
   margin: 0 !important;
-}
-
-.glow-btn {
-  @apply bg-cyan-500 text-black font-black uppercase tracking-[0.2em] text-[11px] shadow-[0_0_30px_rgba(6,182,212,0.4)] hover:scale-105 transition-all;
 }
