@@ -35,27 +35,32 @@ const PREFIXES = ["Volt", "Green", "Eco", "Smart", "Hyper", "Neo", "Pure", "Fast
 const SUFFIXES = ["Hub", "Nexus", "Station", "Point", "Node", "Vector", "Pulse", "Core", "Port", "Link"];
 const CONNECTORS = ["CCS2", "CHAdeMO", "Type 2", "GB/T", "NACS"];
 
+/**
+ * Deterministic pseudo-random offsets based on index to avoid Hydration Mismatch.
+ * Module-level generation with Math.random() is unsafe in Next.js SSR.
+ */
 function generateSyntheticStations(count: number): Station[] {
   const stations: Station[] = [];
   
   for (let i = 0; i < count; i++) {
-    // Pick a random city anchor
+    // Pick a deterministic city anchor
     const city = CITIES[i % CITIES.length];
-    const operator = OPERATORS[Math.floor(Math.random() * OPERATORS.length)];
-    const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
-    const suffix = SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)];
+    const operator = OPERATORS[(i * 7) % OPERATORS.length];
+    const prefix = PREFIXES[(i * 3) % PREFIXES.length];
+    const suffix = SUFFIXES[(i * 11) % SUFFIXES.length];
     
-    // Spread around the city center (0.3 degrees is approx 30km spread)
-    // We use city anchors to ensure markers stay on land
-    const latOffset = (Math.random() - 0.5) * 0.6;
-    const lngOffset = (Math.random() - 0.5) * 0.6;
+    // Spread around the city center deterministically (approx 30km spread)
+    // Using sin/cos ensures the coordinates match on both Server and Client initial render
+    const latOffset = Math.sin(i * 1.5) * 0.3;
+    const lngOffset = Math.cos(i * 1.5) * 0.3;
     
     const lat = city.lat + latOffset;
     const lng = city.lng + lngOffset;
     
-    const totalPorts = Math.floor(Math.random() * 8) + 2;
-    const availablePorts = Math.floor(Math.random() * (totalPorts + 1));
-    const chargerKW = [25, 50, 60, 120, 150, 250][Math.floor(Math.random() * 6)];
+    const totalPorts = (i % 8) + 2;
+    const availablePorts = (i * 13) % (totalPorts + 1);
+    const powers = [25, 50, 60, 120, 150, 250];
+    const chargerKW = powers[i % powers.length];
     
     stations.push({
       id: `synthetic-${i}`,
@@ -67,15 +72,15 @@ function generateSyntheticStations(count: number): Station[] {
       location: { lat, lng },
       totalPorts,
       availablePorts,
-      avgSessionMinutes: Math.floor(Math.random() * 30) + 25,
+      avgSessionMinutes: ((i * 17) % 30) + 25,
       chargerKW,
       batteryCapacityKWh: 80,
-      queueLength: availablePorts === 0 ? Math.floor(Math.random() * 3) + 1 : 0,
+      queueLength: availablePorts === 0 ? (i % 3) + 1 : 0,
       status: availablePorts > 0 ? "Free" : "Busy",
       operator,
-      connectorType: CONNECTORS[Math.floor(Math.random() * CONNECTORS.length)],
-      distanceKm: 0, // Calculated dynamically
-      usageType: Math.random() > 0.3 ? "Public" : "Commercial"
+      connectorType: CONNECTORS[i % CONNECTORS.length],
+      distanceKm: 0, 
+      usageType: i % 10 < 7 ? "Public" : "Commercial"
     });
   }
   
