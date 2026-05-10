@@ -52,7 +52,7 @@ export default function MapView({
         <div class="relative flex items-center justify-center">
           <div class="absolute w-12 h-12 bg-purple-500/30 animate-ping rounded-full"></div>
           <div class="w-4 h-4 bg-purple-500 rotate-45 border-2 border-white shadow-[0_0_15px_#8b5cf6]"></div>
-          <div class="absolute -top-10 whitespace-nowrap bg-black/80 px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border border-purple-500/50">You Are Here</div>
+          <div class="absolute -top-12 whitespace-nowrap bg-black/80 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest border border-purple-500/50 text-white">You Are Here</div>
         </div>
       `,
       iconSize: [24, 24],
@@ -95,9 +95,9 @@ export default function MapView({
             positions={routeLine}
             pathOptions={{
               color: "#06b6d4",
-              dashArray: "5, 10",
-              weight: 2,
-              opacity: 0.6,
+              dashArray: "6, 10",
+              weight: 3,
+              opacity: 0.8,
               lineCap: "round"
             }}
           />
@@ -110,17 +110,18 @@ export default function MapView({
 
           const isBest = s.id === bestStationId;
           const isSelected = s.id === selectedStationId;
+          const isActive = isBest || isSelected;
           
           return (
             <CircleMarker
               key={s.id}
               center={[s.latitude, s.longitude]}
-              radius={isBest || isSelected ? 7 : 4}
+              radius={isActive ? 8 : 4.5}
               pathOptions={{
                 fillColor: isBest ? "#06b6d4" : isSelected ? "#3b82f6" : "#1e40af",
-                color: isBest || isSelected ? "#ffffff" : "transparent",
-                weight: isBest || isSelected ? 2 : 0,
-                fillOpacity: isBest || isSelected ? 1 : 0.4,
+                color: isActive ? "#ffffff" : "transparent",
+                weight: isActive ? 2.5 : 0,
+                fillOpacity: isActive ? 1 : 0.5,
               }}
               eventHandlers={{
                 click: () => onStationSelect(s.id)
@@ -131,7 +132,7 @@ export default function MapView({
                   <h4 className="font-black text-lg tracking-tight uppercase mb-2 text-cyan-400">
                     {s.name}
                   </h4>
-                  <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-white/50">
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-white/60">
                     <div>POWER: {s.chargerKW}kW</div>
                     <div>AVAIL: {s.availablePorts}/{s.totalPorts}</div>
                   </div>

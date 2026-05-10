@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -13,7 +12,8 @@ import {
   Trophy,
   Activity,
   Loader2,
-  ShieldCheck
+  ShieldCheck,
+  ChevronRight
 } from "lucide-react";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
@@ -46,7 +46,7 @@ const navItems = [
 
 export default function Page() {
   const { toast } = useToast();
-  const [userLocation] = useState<Location>({ lat: 11.2588, lng: 75.7804 });
+  const [userLocation] = useState<Location>({ lat: 12.8460, lng: 74.9552 }); // Matching image coords
   const [currentBat, setCurrentBat] = useState(25);
   const [targetBat, setTargetBat] = useState(80);
   const [syncMode, setSyncMode] = useState('custom');
@@ -73,10 +73,8 @@ export default function Page() {
     });
   }, [toast]);
 
-  // Simulation Logic
   useEffect(() => {
     if (!isSimMode) return;
-    
     const interval = setInterval(() => {
       const randomMsg = [
         "Sector load rebalanced.",
@@ -93,7 +91,6 @@ export default function Page() {
       };
       setLogs(prev => [newLog, ...prev].slice(0, 10));
     }, 5000);
-
     return () => clearInterval(interval);
   }, [isSimMode]);
 
@@ -112,12 +109,14 @@ export default function Page() {
   };
 
   return (
-    <main className="page-shell">
+    <main className="page-shell relative">
+      <div className="scanline" />
+      
       {/* Sidebar - Left Section */}
-      <aside className="w-64 glass rounded-[2rem] p-6 flex flex-col gap-8 border border-white/5">
+      <aside className="w-64 glass rounded-[2rem] p-6 flex flex-col gap-8 border-glow-purple border-opacity-30">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-            <Zap className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.5)]">
+            <span className="text-white font-black text-xl">W</span>
           </div>
           <div>
             <h1 className="text-lg font-black font-headline tracking-tighter leading-none uppercase">WattWise</h1>
@@ -125,38 +124,40 @@ export default function Page() {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-2">
           {navItems.map((item) => (
             <button 
               key={item.id} 
               onClick={() => setActiveTab(item.id)}
               className={`nav-btn ${activeTab === item.id ? 'active' : ''}`}
             >
-              <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
+              <item.icon className={`w-4 h-4 ${activeTab === item.id ? 'text-cyan-400' : 'text-white/40'}`} />
+              <span className="tracking-tight">{item.label}</span>
             </button>
           ))}
         </nav>
 
         <div className="mt-auto space-y-6">
-          <div className="glass p-4 rounded-2xl border border-white/5">
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3">Vehicle Status</p>
+          <div className="bg-black/40 p-5 rounded-2xl border border-white/5">
+            <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3">Vehicle Status</p>
             <div className="flex items-center gap-3">
-              <Battery className="w-4 h-4 text-cyan-400" />
+              <div className="p-1.5 rounded bg-cyan-500/10">
+                <Battery className="w-4 h-4 text-cyan-400" />
+              </div>
               <span className="text-sm font-black font-headline">{currentBat}% Charge</span>
             </div>
           </div>
           
-          <div className="flex gap-1 bg-black/40 p-1 rounded-xl">
+          <div className="flex gap-1 bg-black/60 p-1.5 rounded-xl border border-white/5">
             <button 
               onClick={() => { setIsSimMode(true); toast({ title: "SIM MODE", description: "Grid behavior simulation active." }); }}
-              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${isSimMode ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'}`}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-lg ${isSimMode ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-white/30 hover:text-white/60'}`}
             >
               Sim
             </button>
             <button 
               onClick={() => { setIsSimMode(false); toast({ title: "LIVE MODE", description: "Real-time sector tracking locked." }); }}
-              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg shadow-[0_0_10px_rgba(6,182,212,0.3)] transition-all ${!isSimMode ? 'bg-cyan-500 text-black' : 'text-white/30 hover:text-white/60'}`}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!isSimMode ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-white/30 hover:text-white/60'}`}
             >
               Live
             </button>
@@ -171,24 +172,24 @@ export default function Page() {
           
           {/* Tactical Sector Map Card */}
           <div className="glass rounded-[2rem] overflow-hidden flex flex-col border-glow-cyan relative">
-            <div className="p-6 flex justify-between items-start absolute top-0 left-0 w-full z-10 bg-gradient-to-b from-[#02040a] to-transparent">
+            <div className="p-8 flex justify-between items-start absolute top-0 left-0 w-full z-10">
               <div>
-                <h2 className="text-xl font-black font-headline tracking-tight uppercase">Tactical Sector Map</h2>
-                <p className="text-[10px] text-white/40 font-bold">Lat: {userLocation.lat.toFixed(4)}, Lng: {userLocation.lng.toFixed(4)}</p>
+                <h2 className="text-2xl font-black font-headline tracking-tight uppercase">Tactical Sector Map</h2>
+                <p className="text-[11px] text-white/50 font-bold mt-1">Lat: {userLocation.lat.toFixed(4)}, Lng: {userLocation.lng.toFixed(4)}</p>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-6 mt-2">
                 <div className="flex items-center gap-2">
-                  <div className="legend-dot bg-cyan-400" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Best</span>
+                  <div className="legend-dot bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Best</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="legend-dot bg-purple-500 rotate-45" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60">You</span>
+                  <div className="w-2.5 h-2.5 bg-purple-500 rotate-45 shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/80">You</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 mt-16 m-4 rounded-[1.5rem] overflow-hidden border border-white/5">
+            <div className="flex-1 mt-20 m-6 rounded-[1.5rem] overflow-hidden border border-white/5">
               <MapView 
                 stations={rankedStations} 
                 bestStationId={bestStation?.id}
@@ -199,8 +200,8 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Charge Control Card - Redesigned to match image */}
-          <div className="glass rounded-[2rem] p-6 flex flex-col gap-6 border-glow-purple overflow-y-auto">
+          {/* Charge Control Card */}
+          <div className="glass rounded-[2rem] p-8 flex flex-col gap-8 border-glow-purple border-opacity-40 overflow-y-auto">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-purple-400" />
@@ -208,41 +209,39 @@ export default function Page() {
               <h3 className="text-lg font-black font-headline uppercase tracking-tight">Charge Control</h3>
             </div>
 
-            {/* Sync Toggle */}
             <Tabs value={syncMode} onValueChange={setSyncMode} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-black/40 p-1 h-12 rounded-xl">
-                <TabsTrigger value="full" className="rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white font-headline font-black text-[10px] uppercase tracking-widest">Full</TabsTrigger>
-                <TabsTrigger value="custom" className="rounded-lg data-[state=active]:bg-cyan-500 data-[state=active]:text-black font-headline font-black text-[10px] uppercase tracking-widest shadow-[0_0_10px_rgba(6,182,212,0.4)]">Custom</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-black/60 p-1.5 h-14 rounded-xl border border-white/5">
+                <TabsTrigger value="full" className="rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white font-headline font-black text-[11px] uppercase tracking-widest">Full</TabsTrigger>
+                <TabsTrigger value="custom" className="rounded-lg data-[state=active]:bg-cyan-500 data-[state=active]:text-black font-headline font-black text-[11px] uppercase tracking-widest shadow-[0_0_20px_rgba(6,182,212,0.5)]">Custom</TabsTrigger>
               </TabsList>
             </Tabs>
 
-            {/* Telemetry Sliders */}
-            <div className="space-y-8">
-              <div className="space-y-4">
+            <div className="space-y-10">
+              <div className="space-y-5">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Current Level</span>
-                  <span className="text-sm font-black text-cyan-400 font-headline">{currentBat}%</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Current Level</span>
+                  <span className="text-base font-black text-cyan-400 font-headline">{currentBat}%</span>
                 </div>
                 <Slider 
                   value={[currentBat]} 
                   onValueChange={(v) => setCurrentBat(v[0])} 
                   max={100} 
                   step={1} 
-                  className="[&_[role=slider]]:bg-cyan-400 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-[0_0_10px_rgba(6,182,212,0.8)]" 
+                  className="[&_[role=slider]]:bg-cyan-400 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-[0_0_15px_rgba(6,182,212,0.9)] [&_.bg-primary]:bg-cyan-400" 
                 />
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Target Level</span>
-                  <span className="text-sm font-black text-purple-400 font-headline">{targetBat}%</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Target Level</span>
+                  <span className="text-base font-black text-purple-400 font-headline">{targetBat}%</span>
                 </div>
                 <Slider 
                   value={[targetBat]} 
                   onValueChange={(v) => setTargetBat(v[0])} 
                   max={100} 
                   step={1} 
-                  className="[&_[role=slider]]:bg-purple-500 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-[0_0_10px_rgba(139,92,246,0.8)]" 
+                  className="[&_[role=slider]]:bg-purple-500 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-[0_0_15px_rgba(139,92,246,0.9)] [&_.bg-primary]:bg-purple-500" 
                 />
               </div>
             </div>
@@ -255,39 +254,42 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Bottom Row - Ranking & Logs */}
-        <div className="h-28 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-          <div className="glass rounded-[1.5rem] p-4 flex items-center gap-6 border-glow-purple">
-            <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
-              <Trophy className="w-6 h-6 text-purple-400" />
+        {/* Bottom Row */}
+        <div className="h-32 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+          <div className="glass rounded-[1.8rem] p-6 flex items-center gap-8 border-glow-purple border-opacity-30">
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/20 flex items-center justify-center shrink-0 border border-purple-500/20">
+              <Trophy className="w-7 h-7 text-purple-400" />
             </div>
-            <div className="flex-1 flex gap-8 overflow-x-auto no-scrollbar">
-              {rankedStations.slice(0, 4).map((s, i) => (
+            <div className="flex-1 flex gap-12 overflow-x-auto no-scrollbar py-2">
+              {rankedStations.slice(0, 5).map((s, i) => (
                 <div 
                   key={s.id} 
-                  className={`min-w-[140px] space-y-1 cursor-pointer transition-all ${selectedStationId === s.id ? 'opacity-100 scale-105' : 'opacity-40 hover:opacity-100'}`}
+                  className={`min-w-[160px] space-y-1.5 cursor-pointer transition-all ${selectedStationId === s.id ? 'opacity-100 scale-105' : 'opacity-40 hover:opacity-100'}`}
                   onClick={() => setSelectedStationId(s.id)}
                 >
-                  <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Vector {i+1}</p>
-                  <p className="text-xs font-black font-headline uppercase truncate">{s.name}</p>
-                  <p className="text-[10px] font-bold text-cyan-400">{s.totalEffectiveMinutes}m ETA</p>
+                  <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Vector {i+1}</p>
+                  <p className="text-sm font-black font-headline uppercase truncate">{s.name}</p>
+                  <p className="text-[11px] font-bold text-cyan-400">{s.totalEffectiveMinutes}m ETA</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="glass rounded-[1.5rem] p-4 overflow-hidden border-glow-orange group relative">
-             <div className="flex items-center gap-3 mb-2">
-                <Activity className="w-3 h-3 text-orange-400" />
-                <h3 className="text-[10px] font-black font-headline uppercase tracking-widest">Network Logs</h3>
+          <div className="glass rounded-[1.8rem] p-6 overflow-hidden border-glow-orange border-opacity-40 group relative cursor-pointer">
+             <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-4 h-4 text-orange-400" />
+                  <h3 className="text-xs font-black font-headline uppercase tracking-[0.2em]">Network Logs</h3>
+                </div>
+                <ChevronRight className="w-3 h-3 text-white/20 group-hover:text-orange-400 transition-colors" />
              </div>
-             <div className="space-y-1">
-                {logs.slice(0, 2).map((log) => (
-                  <div key={log.id} className="flex justify-between items-center gap-2">
-                    <p className={`text-[9px] truncate font-bold uppercase tracking-tight ${log.type === 'success' ? 'text-emerald-400' : 'text-white/40'}`}>
+             <div className="space-y-2">
+                {logs.slice(0, 3).map((log) => (
+                  <div key={log.id} className="flex justify-between items-center gap-4">
+                    <p className={`text-[10px] truncate font-bold uppercase tracking-tight ${log.type === 'success' ? 'text-emerald-400' : 'text-white/50'}`}>
                       {log.msg}
                     </p>
-                    <span className="text-[7px] font-black text-white/20 shrink-0">{log.time}</span>
+                    <span className="text-[8px] font-black text-white/20 shrink-0 uppercase">{log.time}</span>
                   </div>
                 ))}
              </div>
@@ -304,4 +306,3 @@ export default function Page() {
     </main>
   );
 }
-
