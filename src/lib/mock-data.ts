@@ -2,10 +2,12 @@ import { Station } from "./types";
 
 /**
  * Comprehensive list of anchor hubs across India.
- * Updated to include high-density request zones.
+ * Updated to include high-density request zones like Nanded and Kozhikode.
  */
 const CITIES = [
   // High Density Priority Zones
+  { name: "Nanded", state: "Maharashtra", lat: 19.1383, lng: 77.3210, coastal: false },
+  { name: "Kozhikode", state: "Kerala", lat: 11.2588, lng: 75.7804, coastal: true },
   { name: "Solapur", state: "Maharashtra", lat: 17.6599, lng: 75.9064, coastal: false },
   { name: "Proddatur", state: "Andhra", lat: 14.7303, lng: 78.5516, coastal: false },
   { name: "Kondagaon", state: "Chhattisgarh", lat: 19.5851, lng: 81.6521, coastal: false },
@@ -86,47 +88,51 @@ function getDistance(lat1: number, lng1: number, lat2: number, lng2: number) {
 
 /**
  * Generates synthetic stations with a density-focused proximity rejection rule.
- * Now specifically targeting Kurnool, Davangere, Nandurbar, Jodhpur, and AP hubs.
+ * Target regions: Nanded, Kozhikode, Kurnool, Davangere, Nandurbar, Jodhpur, AP hubs.
  */
 function generateSyntheticStations(count: number): Station[] {
   const stations: Station[] = [];
-  const minSpacingKm = 5; // Target spacing for priority zones
   
   let i = 0;
   let attempts = 0;
-  const maxAttempts = count * 50;
+  const maxAttempts = count * 100;
 
-  const PRIORITY_CITIES = ["Solapur", "Proddatur", "Kondagaon", "Kurnool", "Davangere", "Nandurbar", "Jodhpur", "Vijayawada", "Guntur"];
+  const PRIORITY_CITIES = [
+    "Nanded", "Kozhikode", "Solapur", "Proddatur", "Kondagaon", 
+    "Kurnool", "Davangere", "Nandurbar", "Jodhpur", "Vijayawada", "Guntur"
+  ];
 
   while (stations.length < count && attempts < maxAttempts) {
     attempts++;
     const city = CITIES[i % CITIES.length];
     
-    // Scale jitter for high density in specifically requested cities
     const isPriorityCity = PRIORITY_CITIES.includes(city.name);
-    const jitterScale = isPriorityCity ? 0.35 : 1.5; 
+    // Tighter jitter for high density areas
+    const jitterScale = isPriorityCity ? 0.35 : 1.8; 
     
     let latJitter = (pseudoRandom(attempts * 13) - 0.5) * jitterScale;
     let lngJitter = (pseudoRandom(attempts * 37) - 0.5) * jitterScale;
 
-    // Coastline Safety: Nudge inland for coastal cities
+    // Coastline Safety: Nudge inland for coastal cities like Kozhikode, Kochi, Chennai
     if (city.coastal) {
-      if (city.lng < 78) lngJitter = Math.abs(lngJitter) * 1.5; 
-      else lngJitter = -Math.abs(lngJitter) * 1.5;
+      // If it's on the west coast (lng < 78), nudge East (lng jitter should be positive)
+      if (city.lng < 78) lngJitter = Math.abs(lngJitter) * 1.5 + 0.05; 
+      // If it's on the east coast, nudge West
+      else lngJitter = -(Math.abs(lngJitter) * 1.5 + 0.05);
     }
 
     const lat = city.lat + latJitter;
     const lng = city.lng + lngJitter;
 
     // Proximity rejection to maintain grid clarity
-    // For priority cities we allow 5km, otherwise we keep it slightly more sparse for balance
-    const currentMinSpacing = isPriorityCity ? 5 : 12;
+    // Priority cities: 5km spacing. Regular cities: 15km spacing.
+    const currentMinSpacing = isPriorityCity ? 5 : 15;
     const isTooClose = stations.some(s => getDistance(lat, lng, s.latitude, s.longitude) < currentMinSpacing);
 
     if (!isTooClose) {
-      const totalPorts = (Math.floor(pseudoRandom(attempts * 2) * 10)) + 4;
+      const totalPorts = (Math.floor(pseudoRandom(attempts * 2) * 12)) + 4;
       const availablePorts = Math.floor(pseudoRandom(attempts * 5) * (totalPorts + 1));
-      const powers = [60, 120, 150, 250];
+      const powers = [60, 120, 150, 250, 350];
       const chargerKW = powers[Math.floor(pseudoRandom(attempts * 7) * powers.length)];
       
       stations.push({
@@ -139,15 +145,15 @@ function generateSyntheticStations(count: number): Station[] {
         location: { lat, lng },
         totalPorts,
         availablePorts,
-        avgSessionMinutes: Math.floor(pseudoRandom(attempts * 9) * 15) + 35,
+        avgSessionMinutes: Math.floor(pseudoRandom(attempts * 9) * 15) + 30,
         chargerKW,
         batteryCapacityKWh: 85,
-        queueLength: availablePorts === 0 ? Math.floor(pseudoRandom(attempts * 3) * 5) + 1 : 0,
+        queueLength: availablePorts === 0 ? Math.floor(pseudoRandom(attempts * 3) * 6) + 1 : 0,
         status: availablePorts > 0 ? "Free" : "Busy",
         operator: OPERATORS[stations.length % OPERATORS.length],
         connectorType: CONNECTORS[stations.length % CONNECTORS.length],
         distanceKm: 0,
-        usageType: pseudoRandom(attempts) > 0.85 ? "Commercial" : "Public"
+        usageType: pseudoRandom(attempts) > 0.8 ? "Commercial" : "Public"
       });
       i++;
     }
