@@ -77,7 +77,7 @@ export default function MapView({
 
         {/* Tactical Station Grid */}
         {stations.map((s) => {
-          // Skip suspicious stations (potential ocean markers) to keep map clean
+          // Skip suspicious points to keep the tactical grid clean
           if (s.isSuspicious) return null;
 
           const isBest = s.id === bestStationId;
