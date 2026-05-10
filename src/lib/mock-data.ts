@@ -32,7 +32,7 @@ const CITIES = [
   { name: "Mangalore", state: "Karnataka", lat: 12.9141, lng: 74.8560, coastal: true },
 
   // West
-  { name: "Mumbai", state: "Maharashtra", lat: 19.0760, lng: 72.8777, coastal: true },
+  { name: "Mumbai", state: "Mumbai", lat: 19.0760, lng: 72.8777, coastal: true },
   { name: "Pune", state: "Maharashtra", lat: 18.5204, lng: 73.8567, coastal: false },
   { name: "Ahmedabad", state: "Gujarat", lat: 23.0225, lng: 72.5714, coastal: false },
   { name: "Surat", state: "Gujarat", lat: 21.1702, lng: 72.8311, coastal: true },
