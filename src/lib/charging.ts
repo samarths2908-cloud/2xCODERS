@@ -1,11 +1,11 @@
 import { Station, RankedStation, Location } from "./types";
 
 /**
- * India Bounding Box - Strict Land Boundaries (Approximate)
+ * India Bounding Box - Generous National Boundaries to include all states/UTs
  */
 const INDIA_BOUNDS = {
-  lat: { min: 6.7, max: 37.5 },
-  lng: { min: 68.1, max: 97.4 }
+  lat: { min: 6.0, max: 38.0 },
+  lng: { min: 67.0, max: 98.0 }
 };
 
 /**
@@ -76,7 +76,7 @@ export function rankStations(
       // Smaller score is better. Distance is weighted heavily for immediate availability.
       let score = totalEffectiveMinutes + (distanceKm * 2.5);
       
-      if (suspicious) score += 10000; // Push suspicious points to the bottom
+      if (suspicious) score += 50000; // Deprioritize suspicious points heavily
 
       return {
         ...station,
