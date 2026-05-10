@@ -1,453 +1,312 @@
+
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { 
+  Zap, 
+  Activity, 
+  Shield, 
+  Crosshair, 
+  Cpu, 
+  Navigation, 
+  Signal, 
+  Menu,
+  ChevronRight,
+  Battery,
+  Layers,
+  Search,
+  Settings
+} from "lucide-react";
 import { demoStations } from "@/lib/mock-data";
 import { rankStations } from "@/lib/charging";
-import { RankedStation, Station, Location, Booking } from "@/lib/types";
+import { Location, RankedStation } from "@/lib/types";
 import RecommendationPanel from "@/components/RecommendationPanel";
 import BookingModal from "@/components/BookingModal";
-import { 
-  Map as MapIcon, 
-  ListOrdered, 
-  ShieldAlert, 
-  Battery,
-  LayoutDashboard,
-  Navigation,
-  Loader2,
-  BatteryCharging,
-  Activity,
-  Cpu,
-  Globe
-} from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
+// Dynamically import MapView with SSR disabled to prevent "window is not defined" errors
 const MapView = dynamic(() => import("@/components/MapView"), { 
   ssr: false,
   loading: () => (
-    <div className="w-full h-[450px] rounded-[2.5rem] bg-black/40 animate-pulse border border-white/10 glass flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="w-10 h-10 mx-auto text-cyan-400 mb-4 animate-spin" />
-        <p className="text-[10px] font-black text-cyan-400/50 uppercase tracking-[0.5em]">Initializing Tactical Map...</p>
+    <div className="w-full h-full bg-black/40 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Activity className="w-10 h-10 text-cyan-500 animate-pulse" />
+        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400/70">Syncing Grid...</span>
       </div>
     </div>
   )
 });
 
-const DEFAULT_LOCATION: Location = {
-  lat: 12.846032,
-  lng: 74.955173
-};
+const navItems = [
+  { label: "Tactical Grid", icon: Layers, active: true },
+  { label: "Neural Route", icon: Navigation },
+  { label: "Network Feed", icon: Signal },
+  { label: "Fleet Status", icon: Shield },
+  { label: "System Logs", icon: Activity },
+];
 
-type Tab = "dashboard" | "map" | "queue" | "admin";
-type Mode = "demo" | "real";
-type ChargeMode = "full" | "custom";
+const telemetry = [
+  { label: "Core Temperature", value: "32°C", color: "text-cyan-400" },
+  { label: "Energy Flux", value: "48.2 kW", color: "text-violet-400" },
+  { label: "Grid Stability", value: "99.9%", color: "text-emerald-400" },
+  { label: "Signal Integrity", value: "88 ms", color: "text-amber-400" },
+];
 
-interface Particle {
-  left: string;
-  top: string;
-  delay: string;
+function GlowPill({ children, tone = "cyan" }: { children: React.ReactNode, tone?: "cyan" | "green" | "purple" | "amber" }) {
+  const tones = {
+    cyan: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200 shadow-[0_0_15px_rgba(34,211,238,0.2)]",
+    green: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200 shadow-[0_0_15px_rgba(34,197,94,0.2)]",
+    purple: "border-violet-400/30 bg-violet-400/10 text-violet-200 shadow-[0_0_15px_rgba(139,92,246,0.2)]",
+    amber: "border-amber-400/30 bg-amber-400/10 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]",
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-[9px] font-black uppercase tracking-[0.2em] ${tones[tone]}`}>
+      {children}
+    </span>
+  );
 }
 
-export default function WattWiseApp() {
+function TacticalCard({ title, children, className = "", tone = "cyan" }: { title?: string, children: React.ReactNode, className?: string, tone?: "cyan" | "purple" }) {
+  const borderTone = tone === "cyan" ? "neon-border-cyan" : "neon-border-purple";
+  return (
+    <div className={`glass rounded-[2rem] overflow-hidden ${borderTone} ${className}`}>
+      {title && (
+        <div className="border-b border-white/5 px-6 py-4 flex items-center justify-between bg-white/[0.02]">
+          <h3 className="text-[11px] font-black uppercase tracking-[0.35em] text-white/60">{title}</h3>
+          <div className="flex gap-1">
+            <div className="w-1 h-1 rounded-full bg-cyan-400" />
+            <div className="w-1 h-1 rounded-full bg-white/20" />
+          </div>
+        </div>
+      )}
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
+
+export default function Page() {
   const { toast } = useToast();
-  const [mode, setMode] = useState<Mode>("real");
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [rawStations, setRawStations] = useState<Station[]>(demoStations);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [chargeMode, setChargeMode] = useState<ChargeMode>("custom");
-  const [startPct, setStartPct] = useState(25);
-  const [targetPct, setTargetPct] = useState(80);
-  const [tick, setTick] = useState(0);
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [isLocating, setIsLocating] = useState(true);
-  const [userLocation, setUserLocation] = useState<Location>(DEFAULT_LOCATION);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [userLocation] = useState<Location>({ lat: 11.2588, lng: 75.7804 }); // Anchored in Kozhikode
+  const [currentBat, setCurrentBat] = useState(25);
+  const [targetBat] = useState(80);
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
 
-  const scrollRefs = {
-    dashboard: useRef<HTMLDivElement>(null),
-    map: useRef<HTMLDivElement>(null),
-    queue: useRef<HTMLDivElement>(null),
-    admin: useRef<HTMLDivElement>(null),
-  };
-
-  useEffect(() => {
-    const generated = Array.from({ length: 50 }).map(() => ({
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 100}%`,
-      delay: `${Math.random() * 10}s`
-    }));
-    setParticles(generated);
-
-    if (typeof window !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setIsLocating(false);
-          toast({ title: "SATELLITE SYNC", description: "GPS uplink established successfully." });
-        },
-        () => {
-          setIsLocating(false); 
-          toast({ variant: "destructive", title: "GPS OFFLINE", description: "Reverting to fallback sector coordinates." });
-        }
-      );
-    } else {
-      setIsLocating(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (mode === "demo") {
-      interval = setInterval(() => {
-        setRawStations(prev => prev.map(s => ({
-          ...s,
-          availablePorts: Math.max(0, Math.min(s.totalPorts, s.availablePorts + (Math.random() > 0.6 ? 1 : -1))),
-          queueLength: Math.max(0, s.queueLength + (Math.random() > 0.8 ? 1 : -1))
-        })));
-        setTick(t => t + 1);
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [mode]);
-
   const rankedStations = useMemo(() => {
-    const finalTarget = chargeMode === "full" ? 100 : targetPct;
-    return rankStations(rawStations, startPct, finalTarget, userLocation);
-  }, [rawStations, startPct, targetPct, chargeMode, userLocation, tick]);
+    return rankStations(demoStations, currentBat, targetBat, userLocation);
+  }, [currentBat, targetBat, userLocation]);
 
   const bestStation = rankedStations[0];
-  const selectedStation = rankedStations.find(s => s.id === selectedId) || bestStation;
-
-  const displayStations = useMemo(() => rankedStations.slice(0, 50), [rankedStations]);
+  const activeStation = rankedStations.find(s => s.id === selectedStationId) || bestStation;
 
   useEffect(() => {
-    if (bestStation && !selectedId) {
-      setSelectedId(bestStation.id);
-    }
-  }, [bestStation, selectedId]);
+    const timer = setTimeout(() => {
+      toast({
+        title: "NEURAL LINK ESTABLISHED",
+        description: "Tactical EV Grid synced with current coordinates.",
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
-  const scrollTo = (tab: Tab) => {
-    setActiveTab(tab);
-    scrollRefs[tab].current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleReroute = () => {
-    if (bestStation) {
-      setSelectedId(bestStation.id);
-      scrollTo("map");
-      toast({ title: "VECTOR LOCKED", description: `Optimized path set to ${bestStation.name}` });
-    }
-  };
-
-  const handleBookConfirm = (bookingData: Omit<Booking, 'id'>) => {
-    const newBooking = { ...bookingData, id: Math.random().toString(36).substr(2, 9) };
-    setBookings([...bookings, newBooking]);
+  const handleBooking = (bookingData: any) => {
     toast({
-      title: "NODE RESERVED",
-      description: `Charging port locked at ${selectedStation.name}`
+      title: "RESERVATION LOCKED",
+      description: `Tactical Port at ${activeStation?.name} secured for ${bookingData.startTime}.`,
     });
+    setIsBookingOpen(false);
   };
 
   return (
-    <main className="page-shell">
-      <div className="bg-particles">
-        {particles.map((p, i) => (
-          <div 
-            key={i} 
-            className="particle" 
-            style={{ 
-              left: p.left, 
-              top: p.top,
-              animationDelay: p.delay
-            }} 
-          />
-        ))}
+    <div className="relative min-h-screen bg-[#02040a] text-white selection:bg-cyan-500/30 overflow-hidden cyber-grid">
+      <div className="scanline" />
+      
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-500/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-500/10 blur-[120px] rounded-full" />
       </div>
 
-      <aside className="sidebar glass">
-        <div>
-          <div className="flex items-center gap-4 mb-12">
-            <div className="brand-mark">W</div>
-            <div>
-              <h1 className="text-2xl font-black font-headline tracking-tighter">WATTWISE</h1>
-              <p className="text-[9px] uppercase tracking-[0.5em] text-cyan-500 font-bold">Tactical Command</p>
-            </div>
-          </div>
-
-          <nav className="space-y-3">
-            {[
-              { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-              { id: "map", icon: MapIcon, label: "Tactical Map" },
-              { id: "queue", icon: ListOrdered, label: "Sector Feed" },
-              { id: "admin", icon: ShieldAlert, label: "Network Logs" },
-            ].map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollTo(item.id as Tab)}
-                className={`nav-btn flex items-center gap-4 ${activeTab === item.id ? 'active' : ''}`}
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="space-y-6">
-          <div className="p-5 glass rounded-[1.5rem] bg-cyan-500/5 border-cyan-500/20">
-            <p className="text-[9px] uppercase font-black text-cyan-400 mb-3 tracking-widest">System Status</p>
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] font-bold tracking-tight uppercase">Core Link: Stable</span>
-            </div>
-          </div>
-          
-          <div className="flex p-1 bg-black/40 rounded-2xl border border-white/5">
-            <button 
-              onClick={() => setMode("demo")}
-              className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${mode === "demo" ? 'bg-cyan-500 text-black' : 'text-white/40 hover:text-white/60'}`}
-            >
-              Sim
-            </button>
-            <button 
-              onClick={() => setMode("real")}
-              className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${mode === "real" ? 'bg-primary text-black' : 'text-white/40 hover:text-white/60'}`}
-            >
-              Live
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      <div className="content">
-        <header ref={scrollRefs.dashboard} className="glass p-10 rounded-[2.5rem] flex flex-col lg:flex-row justify-between items-start gap-12 mt-4">
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-black text-cyan-400 tracking-[0.6em] uppercase mb-4 flex items-center gap-3">
-              <Globe className="w-4 h-4" /> Grid Sector Alpha-9
-            </p>
-            <h2 className="text-7xl font-black font-headline tracking-tighter mb-6 leading-[0.9]">
-              OPTIMAL<br/>
-              <span className="text-cyan-400">VECTOR LOCKED.</span>
-            </h2>
-            <p className="text-white/40 text-lg leading-relaxed mb-8 font-medium">
-              Network scan complete. {rawStations.length} nodes active across the tactical grid. Deep-learning algorithm has isolated the most efficient charging vector for your current telemetry.
-            </p>
-            
-            <button onClick={handleReroute} className="glow-btn px-10 py-5 flex items-center gap-3">
-              <Navigation className="w-5 h-5" />
-              Initiate Reroute
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-5 w-full lg:w-[450px]">
-            <div className="glass p-8 rounded-[2rem] bg-black/30">
-              <span className="text-[10px] uppercase tracking-widest text-cyan-400 font-black">Optimal Distance</span>
-              <strong className="text-5xl block mt-3 font-black font-headline tracking-tighter">{bestStation?.distanceKm.toFixed(1)}<span className="text-sm ml-1 opacity-30">KM</span></strong>
-              <div className="mt-4 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                <span className="text-[10px] text-white/40 uppercase font-black">{bestStation?.city}</span>
+      <main className="relative z-10 flex h-screen p-4 lg:p-6 gap-6">
+        
+        <aside className="hidden xl:flex flex-col w-[280px] shrink-0 gap-6 h-full">
+          <TacticalCard className="h-full flex flex-col p-0">
+            <div className="p-6 flex items-center gap-4 bg-white/[0.03] border-b border-white/5">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                <Zap className="w-6 h-6 text-cyan-400" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black font-headline tracking-tighter neon-text-cyan">WATTWISE</h1>
+                <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Command Center</p>
               </div>
             </div>
-            <div className="glass p-8 rounded-[2rem] bg-black/30">
-              <span className="text-[10px] uppercase tracking-widest text-purple-400 font-black">Active Nodes</span>
-              <strong className="text-5xl block mt-3 font-black font-headline tracking-tighter">{rankedStations.length}</strong>
-              <div className="mt-4 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                <span className="text-[10px] text-white/40 uppercase font-black">Scanning...</span>
+
+            <nav className="flex-1 p-4 space-y-2 mt-4">
+              {navItems.map((item) => (
+                <button
+                  key={item.label}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all group ${
+                    item.active 
+                      ? "bg-cyan-500/10 border border-cyan-500/20 text-cyan-300" 
+                      : "text-white/40 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <item.icon className={`w-4 h-4 ${item.active ? "text-cyan-400" : "group-hover:text-cyan-400"}`} />
+                    <span className="text-[12px] font-bold uppercase tracking-widest">{item.label}</span>
+                  </div>
+                  {item.active && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(6,182,212,1)]" />}
+                </button>
+              ))}
+            </nav>
+
+            <div className="p-6 border-t border-white/5 bg-white/[0.01]">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">User Profile</span>
+                <GlowPill tone="cyan">PILOT-01</GlowPill>
               </div>
-            </div>
-            <div className="glass p-8 rounded-[2rem] col-span-2 bg-cyan-500/5">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] uppercase tracking-widest text-green-400 font-black">Active Reservations</span>
-                <Cpu className="w-4 h-4 text-green-500/50" />
-              </div>
-              <div className="flex items-center justify-between">
-                <strong className="text-5xl font-black font-headline tracking-tighter">{bookings.length}</strong>
-                <div className="flex gap-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className={`h-1.5 w-6 rounded-full ${i < bookings.length ? 'bg-green-500 shadow-[0_0_15px_#22c55e]' : 'bg-white/10'}`} />
-                  ))}
+              <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-500 flex items-center justify-center font-black">P</div>
+                <div>
+                  <div className="text-xs font-bold">Kozhikode Sector</div>
+                  <div className="text-[9px] text-white/30 uppercase font-black">Grid Sync: OK</div>
                 </div>
               </div>
             </div>
-          </div>
-        </header>
+          </TacticalCard>
+        </aside>
 
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-          <div className="lg:col-span-2 space-y-6">
-            <div ref={scrollRefs.map} className="glass p-8 rounded-[2.5rem] relative">
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h3 className="text-2xl font-black font-headline uppercase tracking-tight">Tactical Grid Overlay</h3>
-                  <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mt-1">Sector: {userLocation.lat.toFixed(3)}N / {userLocation.lng.toFixed(3)}E</p>
+        <section className="flex-1 flex flex-col gap-6 overflow-hidden">
+          
+          <header className="flex flex-col md:flex-row gap-6">
+            <TacticalCard className="flex-1" tone="cyan">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,1)]" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400/70">Tactical Vector Locked</span>
+                  </div>
+                  <h2 className="text-5xl font-black font-headline tracking-tighter leading-none">
+                    FASTEST NODE <span className="text-cyan-400">FOUND.</span>
+                  </h2>
+                  <p className="text-sm text-white/40 font-medium max-w-xl">
+                    Coordinate synchronization complete. Optimized route to <span className="text-white font-bold">{bestStation?.name}</span> available for immediate engagement.
+                  </p>
                 </div>
                 <div className="flex gap-3">
-                  <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Optimal Target</span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Your Position</span>
-                  </div>
-                </div>
-              </div>
-              <MapView 
-                stations={rankedStations}
-                bestStationId={bestStation?.id}
-                selectedStationId={selectedId}
-                userLocation={userLocation}
-                onStationSelect={(id) => setSelectedId(id)}
-              />
-            </div>
-
-            <div ref={scrollRefs.queue} className="glass p-10 rounded-[2.5rem]">
-              <div className="flex justify-between items-center mb-10">
-                <h3 className="text-2xl font-black font-headline uppercase tracking-tight">Sector Node Feed</h3>
-                <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-4 py-2 rounded-full font-black uppercase tracking-widest">Displaying Primary Nodes</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {displayStations.map((s) => (
-                  <article 
-                    key={s.id} 
-                    onClick={() => setSelectedId(s.id)}
-                    className={`p-8 glass border transition-all cursor-pointer rounded-[2rem] ${selectedId === s.id ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_40px_rgba(6,182,212,0.15)]' : 'border-white/5 hover:border-white/20 bg-black/30'}`}
-                  >
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h4 className="font-black text-xl tracking-tight uppercase">{s.name}</h4>
-                        <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mt-1">{s.operator} • {s.city}</p>
-                      </div>
-                      <span className={`text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest ${s.availablePorts > 0 ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                        {s.availablePorts > 0 ? 'Free' : 'Busy'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                      <div className="bg-black/40 p-4 rounded-2xl border border-white/5">
-                        <p className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-1">Range Delta</p>
-                        <p className="text-lg font-black">{s.distanceKm.toFixed(1)}km</p>
-                      </div>
-                      <div className="bg-black/40 p-4 rounded-2xl border border-white/5">
-                        <p className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-1">Grid Lag</p>
-                        <p className="text-lg font-black text-amber-400">{s.waitMinutes}m</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <p className="text-[9px] text-white/40 uppercase tracking-widest font-black">Effective ETA</p>
-                        <p className="text-4xl font-black text-cyan-400 tracking-tighter">{s.totalEffectiveMinutes}<span className="text-sm ml-1 opacity-50">MIN</span></p>
-                      </div>
-                      <button className="text-[10px] font-black bg-white/5 border border-white/10 px-6 py-3 rounded-xl hover:bg-cyan-500 hover:text-black transition-all uppercase tracking-widest">
-                        Focus Node
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <aside className="space-y-6">
-            <div className="glass p-10 rounded-[2.5rem]">
-              <h3 className="text-2xl font-black font-headline mb-10 flex items-center gap-4 uppercase tracking-tight">
-                <BatteryCharging className="w-8 h-8 text-cyan-400" />
-                Telemetry Console
-              </h3>
-
-              <div className="space-y-12">
-                <Tabs value={chargeMode} onValueChange={(v) => setChargeMode(v as ChargeMode)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-black/60 p-1 border border-white/10 rounded-2xl h-14">
-                    <TabsTrigger value="full" className="rounded-xl data-[state=active]:bg-cyan-500 data-[state=active]:text-black text-[11px] font-black uppercase tracking-widest">Standard</TabsTrigger>
-                    <TabsTrigger value="custom" className="rounded-xl data-[state=active]:bg-cyan-500 data-[state=active]:text-black text-[11px] font-black uppercase tracking-widest">Advanced</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-
-                <div className="space-y-10">
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-end">
-                      <Label className="text-[10px] font-black text-white/30 uppercase tracking-widest">Current Storage</Label>
-                      <span className="text-3xl font-headline font-black text-cyan-400 tracking-tighter">{startPct}%</span>
-                    </div>
-                    <Slider 
-                      value={[startPct]} 
-                      onValueChange={(val) => setStartPct(val[0])}
-                      max={95} 
-                      step={1} 
-                    />
-                  </div>
-
-                  {chargeMode === "custom" && (
-                    <div className="space-y-5">
-                      <div className="flex justify-between items-end">
-                        <Label className="text-[10px] font-black text-white/30 uppercase tracking-widest">Target Threshold</Label>
-                        <span className="text-3xl font-headline font-black text-amber-400 tracking-tighter">{targetPct}%</span>
-                      </div>
-                      <Slider 
-                        value={[targetPct]} 
-                        onValueChange={(val) => setTargetPct(Math.max(val[0], startPct + 5))}
-                        min={startPct + 5}
-                        max={100} 
-                        step={1} 
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-10 border-t border-white/10">
-                  <RecommendationPanel 
-                    station={selectedStation} 
-                    isBest={selectedStation.id === bestStation?.id}
-                    onReroute={handleReroute}
-                  />
-                  <button 
-                    onClick={() => setIsBookingOpen(true)}
-                    className="w-full mt-8 py-6 rounded-2xl border border-white/10 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all text-[11px] font-black uppercase tracking-[0.4em] flex items-center justify-center gap-3"
-                  >
-                    <Activity className="w-5 h-5 text-cyan-400" />
-                    Reserve Tactical Slot
+                  <button className="h-14 px-8 rounded-2xl bg-cyan-500 text-black font-black uppercase tracking-[0.2em] text-[11px] shadow-[0_0_30px_rgba(6,182,212,0.4)] hover:scale-105 transition-all">
+                    Reroute Now
+                  </button>
+                  <button className="h-14 w-14 rounded-2xl border border-white/10 flex items-center justify-center hover:bg-white/5 transition-all">
+                    <Settings className="w-5 h-5 text-white/50" />
                   </button>
                 </div>
               </div>
-            </div>
+            </TacticalCard>
 
-            <div ref={scrollRefs.admin} className="glass p-10 rounded-[2.5rem]">
-              <h3 className="text-2xl font-black font-headline mb-8 flex items-center gap-4 text-amber-500 uppercase tracking-tight">
-                <ShieldAlert className="w-7 h-7" />
-                Network Log
-              </h3>
-              <div className="space-y-5">
-                {bookings.map((b) => (
-                  <div key={b.id} className="p-6 rounded-[2rem] bg-cyan-500/5 border border-cyan-500/20">
-                    <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-3">Reservation Locked</p>
-                    <p className="text-sm font-black uppercase text-white/80">{rawStations.find(s => s.id === b.stationId)?.name}</p>
-                    <div className="flex justify-between mt-5 text-[10px] font-mono text-white/30 uppercase tracking-tighter">
-                      <span>{b.date} • {b.startTime}</span>
-                      <span className="text-cyan-400/50">{b.duration} Min</span>
-                    </div>
+            <TacticalCard className="w-full md:w-[320px]" tone="purple">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Energy Core</span>
+                  <GlowPill tone="purple">Active</GlowPill>
+                </div>
+                <div className="flex items-end justify-between">
+                  <div className="text-5xl font-black font-headline tracking-tighter text-violet-400">{currentBat}%</div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-white/40 uppercase font-black">Target</span>
+                    <span className="text-xl font-black">{targetBat}%</span>
                   </div>
-                ))}
-                {bookings.length === 0 && (
-                  <div className="text-center py-12">
-                    <p className="text-[11px] text-white/20 uppercase font-black tracking-[0.3em] italic">No active sessions.</p>
-                  </div>
-                )}
+                </div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-400 to-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all duration-1000" 
+                    style={{ width: `${currentBat}%` }} 
+                  />
+                </div>
+              </div>
+            </TacticalCard>
+          </header>
+
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 overflow-hidden">
+            
+            <div className="relative group rounded-[2.5rem] border border-cyan-500/20 bg-black/40 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.1)]">
+              <div className="absolute top-6 left-6 z-10 flex gap-2">
+                <div className="glass px-4 py-2 rounded-xl border-white/10 flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(6,182,212,1)]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Sector Grid Live</span>
+                </div>
+                <div className="glass px-4 py-2 rounded-xl border-white/10 flex items-center gap-3">
+                  <Crosshair className="w-3 h-3 text-white/40" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Lat: {userLocation.lat.toFixed(4)}</span>
+                </div>
+              </div>
+              <div className="w-full h-full">
+                <MapView 
+                  stations={rankedStations} 
+                  bestStationId={bestStation?.id}
+                  selectedStationId={selectedStationId}
+                  userLocation={userLocation}
+                  onStationSelect={setSelectedStationId}
+                />
+              </div>
+              <div className="absolute bottom-6 right-6 z-10">
+                <button className="w-14 h-14 rounded-2xl glass border-white/10 flex items-center justify-center hover:bg-cyan-500/20 transition-all hover:border-cyan-500/40">
+                  <Search className="w-5 h-5 text-white/60" />
+                </button>
               </div>
             </div>
-          </aside>
+
+            <TacticalCard className="flex flex-col h-full overflow-y-auto" tone="cyan" title="Node Analysis">
+              <div className="space-y-8">
+                <RecommendationPanel 
+                  station={activeStation} 
+                  isBest={activeStation.id === bestStation.id}
+                  onReroute={() => setIsBookingOpen(true)}
+                />
+
+                <div className="pt-8 border-t border-white/5">
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">System Telemetry</h4>
+                    <Activity className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {telemetry.map(t => (
+                      <div key={t.label} className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <p className="text-[8px] uppercase tracking-widest text-white/30 font-black mb-1">{t.label}</p>
+                        <p className={`text-xl font-headline font-black ${t.color}`}>{t.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-8 border-t border-white/5">
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">Network Logs</h4>
+                    <button className="text-[9px] uppercase font-black text-cyan-400 hover:underline">Clear</button>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex gap-4 p-4 rounded-2xl bg-black/40 border border-white/5 text-[11px] leading-relaxed">
+                      <span className="text-cyan-400 font-black">[09:42]</span>
+                      <span className="text-white/60">Vector optimization complete for <span className="text-white">Sector South</span>.</span>
+                    </div>
+                    <div className="flex gap-4 p-4 rounded-2xl bg-black/40 border border-white/5 text-[11px] leading-relaxed">
+                      <span className="text-violet-400 font-black">[09:40]</span>
+                      <span className="text-white/60">Neural link established with vehicle MCU.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TacticalCard>
+          </div>
         </section>
-      </div>
+      </main>
 
       <BookingModal 
-        station={selectedStation}
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-        onConfirm={handleBookConfirm}
+        station={activeStation} 
+        isOpen={isBookingOpen} 
+        onClose={() => setIsBookingOpen(false)} 
+        onConfirm={handleBooking}
       />
-    </main>
+    </div>
   );
 }

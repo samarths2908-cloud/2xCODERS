@@ -1,12 +1,12 @@
+
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RankedStation, Location } from "@/lib/types";
 
-// Fix Leaflet icon issue
 const fixLeafletIcons = () => {
   if (typeof window !== 'undefined') {
     delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -45,20 +45,27 @@ export default function MapView({
     fixLeafletIcons();
   }, []);
 
-  const userIcon = L.divIcon({
-    className: "user-marker",
-    html: `
-      <div class="relative flex items-center justify-center">
-        <div class="absolute w-12 h-12 rounded-full animate-ping opacity-20 bg-cyan-400"></div>
-        <div class="w-4 h-4 rounded-full border-2 border-white bg-cyan-500 shadow-[0_0_20px_#06b6d4]"></div>
-      </div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
+  // Use useMemo to prevent re-creating the icon on every render
+  // and ensure it only runs on the client.
+  const userIcon = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return L.divIcon({
+      className: "user-marker",
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-12 h-12 rounded-full animate-ping opacity-20 bg-cyan-400"></div>
+          <div class="w-4 h-4 rounded-full border-2 border-white bg-cyan-500 shadow-[0_0_20px_#06b6d4]"></div>
+        </div>
+      `,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  }, []);
+
+  if (typeof window === 'undefined') return null;
 
   return (
-    <div className="relative w-full h-[450px] rounded-[2rem] overflow-hidden border border-white/5 glass shadow-2xl z-0">
+    <div className="relative w-full h-full z-0">
       <MapContainer
         center={[userLocation.lat, userLocation.lng]}
         zoom={6}
@@ -72,7 +79,7 @@ export default function MapView({
         
         <RecenterMap center={[userLocation.lat, userLocation.lng]} />
 
-        <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon} />
+        {userIcon && <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon} />}
 
         {stations.map((s) => {
           if (s.isSuspicious) return null;
